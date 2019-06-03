@@ -1,23 +1,26 @@
 # Table of contents
 
 * [Lot49](README.md)
-* [1. Introduction](untitled.md)
-* [2. Overview](2.-overview.md)
-* [3. Concepts](3.-concepts.md)
-* [4. Protocol Details](4.-protocol-details.md)
-* [5. Safety](5.-safety.md)
-* [6. Incentive Economy](6.-incentive-economy.md)
-* [7. Analysis](7.-analysis.md)
-* [8. Future Work](8.-future-workuntitled.md)
-* [9. Conclusion](9.-conclusion.md)
-* [10. Acknowledgments](10.-acknowledgments.md)
-* [References](references.md)
+
+## protocol
+
+* [1. Introduction](protocol/doc-01_introduction.md)
+* [2. Overview](protocol/protocol-02_overview.md)
+* [3. Concepts](protocol/protocol-03_concepts.md)
+* [4. Protocol Details](protocol/protocol-04_protocol-details.md)
+* [5. Safety](protocol/protocol-05_safety.md)
+* [6. Incentive Economy](protocol/protocol-06_incentive-economy.md)
+* [7. Analysis](protocol/protocol-07_analysis.md)
+* [8. Future Work](protocol/protocol-08_future-work.md)
+* [9. Conclusion](protocol/protocol-conclusion.md)
+* [10. Acknowledgments](protocol/protocol-acknowledgments.md)
+* [References](protocol/protocol-references.md)
 
 ## Appendix
 
-* [Appendix A.Technical Overview](appendix/appendix-a.technical-overview.md)
-* [Appendix B. Incentive Headers](appendix/appendix-b.-incentive-headers.md)
-* [Appendix C. Implied Transactions / Input Scripts](appendix/appendix-c.-implied-transactions-input-scripts.md)
-* [Appendix D. BLS versus Schnorr](appendix/appendix-d.-bls-versus-schnorr.md)
-* [Appendix E. Transmission Overhead](appendix/appendix-e.-transmission-overhead.md)
+* [Appendix A.Technical Overview](appendix-1/appendix-a_technical-overview..md)
+* [Appendix B. Incentive Headers](appendix-1/appendix-b_incentive-headers.md)
+* [Appendix C. Implied Transactions / Input Scripts](appendix-1/appendix-c_implied-transactions-input-scripts.md)
+* [Appendix D. BLS versus Schnorr](appendix-1/appendix-d_bls-versus-schnorr.md)
+* [Appendix E. Transmission Overhead](appendix-1/appendix-e_transmission-overhead.md)
 

@@ -16,7 +16,7 @@ Nodes connected to the internet may also act as a provider of blockchain transac
 
 A node that wishes to send data commits to spend a specific number of incentive tokens conditioned on confirmation the data is delivered. A sender commits to spend more tokens to improve the likelihood of a successful delivery, increase the distance data will be relayed and/or incentivize a gateway to relay the data. The mesh routing protocol will generate an estimated delivery cost as part of its routing metrics and can update its estimates based on the delivery success of prior messages.
 
-![Figure 12: Sender Node A sends payload data m1 to relay Node B and proposes to increase Node B&#x2019;s share of their joint account by 3 tokens in exchange for proof that destination Node D received m1.](.gitbook/assets/fig12.svg)
+![Figure 12: Sender Node A sends payload data m1 to relay Node B and proposes to increase Node B&#x2019;s share of their joint account by 3 tokens in exchange for proof that destination Node D received m1.](../.gitbook/assets/fig12.svg)
 
 #### Relay / Gateway Nodes
 
@@ -26,17 +26,17 @@ A node that receives a message from a sender or other relay node will cache and 
 
 A node that receives a message for which it is the destination acts much like a relay node, but they can immediately confirm the payment channel update that increases their channel balance. When they reveal the encrypted secret that came with the message they received, any node involved in the delivery of the message can also update or settle their associated transaction.
 
-![ Figure 13: Node G produces the secret that proves delivery of payload data m1. Once their delivery receipt is received their last corresponding update and settle transactions becomes valid and can be recorded on the Bitcoin blockchain.](.gitbook/assets/fig13.svg)
+![ Figure 13: Node G produces the secret that proves delivery of payload data m1. Once their delivery receipt is received their last corresponding update and settle transactions becomes valid and can be recorded on the Bitcoin blockchain.](../.gitbook/assets/fig13.svg)
 
 **Figure 13**: Node G produces the secret that proves delivery of payload data m1. Once their delivery receipt is received their last corresponding update and settle transactions becomes valid and can be recorded on the Bitcoin blockchain.
 
 All relay nodes involved with delivering the message can use the final revealed secret to confirm their own payment channel updates. Once a node has a delivery receipt, they can perform a unilateral close of the channel if a node they relayed for becomes unresponsive. After a node receives proof that a message they relayed is received, they can negotiate with their upstream relay node to update or cooperatively close their respective payment channel balances instead of immediately committing the confirmed update to the blockchain.
 
-![Figure 14: Node B negotiates with upstream Node A by sending the delivery receipt secret produced when destination Node D received m1. If Node A can not be reached, Node B can unilaterally use this information to settle the update on the blockchain. However, instead of settling, Nodes A and B can keep the channel open and create their next update with the balance agreed to by the last valid update.](.gitbook/assets/fig14.svg)
+![Figure 14: Node B negotiates with upstream Node A by sending the delivery receipt secret produced when destination Node D received m1. If Node A can not be reached, Node B can unilaterally use this information to settle the update on the blockchain. However, instead of settling, Nodes A and B can keep the channel open and create their next update with the balance agreed to by the last valid update.](../.gitbook/assets/fig14.svg)
 
 Nodes that re-transmit message delivery receipts do not need to wait for an on-chain confirmation of an incentive payment. Also, as they re-transmit the payment receipt back to the message sender, they encourage more messages to be sent along their route. Proof of delivery implies future transmissions along the same route will also result in payment. Extra incentive payments can also prepay a message receiver to reply. Any reply could also include the previous delivery receipt secret to increase efficiency.
 
-![Figure 15: Node A proposes to send a new message m2 and update their balance with Node B again. Node B has already proven that Node D received m1, so Node A knows Node B can settle the last update directly on the blockchain without Node A. When Node A proposes a new update, they must treat the previous update as the current state otherwise Node B will not accept a new update from them.](.gitbook/assets/fig15.svg)
+![Figure 15: Node A proposes to send a new message m2 and update their balance with Node B again. Node B has already proven that Node D received m1, so Node A knows Node B can settle the last update directly on the blockchain without Node A. When Node A proposes a new update, they must treat the previous update as the current state otherwise Node B will not accept a new update from them.](../.gitbook/assets/fig15.svg)
 
 #### Witness Node
 
@@ -80,7 +80,7 @@ Node B can propose opening a channel any time after receiving a route discovery 
 
 **Step 3: Send Message**
 
-![Figure 16: Node A sends a message to Node D. This example shows the additional information \(eg. &#x201C;A\*;8;D\*, SigA&#x201D;\) that must be transmitted between nodes to enable the reconstruction of the implied transactions. The Node IDs with asterisks do not need to be transmitted because the information already exists in the network headers required to deliver the message. The initial amount of tokens spent by Node A to send the message is 8 and SigA is Node A&#x2019;s signature for the first set of implied transactions. The final transaction sent by Node D has a complete set of signatures and the preimage so it can be settled on the blockchain.](.gitbook/assets/fig16.svg)
+![Figure 16: Node A sends a message to Node D. This example shows the additional information \(eg. &#x201C;A\*;8;D\*, SigA&#x201D;\) that must be transmitted between nodes to enable the reconstruction of the implied transactions. The Node IDs with asterisks do not need to be transmitted because the information already exists in the network headers required to deliver the message. The initial amount of tokens spent by Node A to send the message is 8 and SigA is Node A&#x2019;s signature for the first set of implied transactions. The final transaction sent by Node D has a complete set of signatures and the preimage so it can be settled on the blockchain.](../.gitbook/assets/fig16.svg)
 
 After receiving a payment channel proposal from Node B, Node A has what they need to send a message to some other node in the network via Node B. For example, when Node A sends a message to Node D along a route that includes Node B as the first hop. Node A includes in their transmission an incentive header \([Setup\_2]()\) with a signature to add value to the payment channel with node B and an incentive header \([Negotiate\_1]()\) or if the channel has already been funded adds header \([Negotiate\_2]()\). These headers update the channel to transfer some amount of incentive value to Node B. Node B will only be able to settle the payment channel update if Node D reveals the preimage secret to confirm they received the message from node A. Each transaction in the chain of relay nodes contains the condition that Node D a preimage included in the message from Node A sent to Node D.
 
@@ -88,7 +88,7 @@ If Node C is the next hop that Node B must use to relay the message to Node D, N
 
 **Step 4: Message Received**
 
-![Figure 17: Node D sends a return receipt message containing the preimage to Node A. This example shows that Node B must inform Node A that Node C relayed the message to Node D; the other nodes can infer this when validating preimage is correct. The final signed transaction and preimage can be used by each node to negotiate a channel update with its upstream partner or to immediately close the payment channel.](.gitbook/assets/fig17.svg)
+![Figure 17: Node D sends a return receipt message containing the preimage to Node A. This example shows that Node B must inform Node A that Node C relayed the message to Node D; the other nodes can infer this when validating preimage is correct. The final signed transaction and preimage can be used by each node to negotiate a channel update with its upstream partner or to immediately close the payment channel.](../.gitbook/assets/fig17.svg)
 
 When the message arrives at its destination—for example, Node D has received the message from Node A—then Node D updates the state of their payment channel with Node C by transmitting an incentive header \([Receipt 1]()\) that includes their preimage confirming receipt of the message. Now the transaction is complete and can be presented to a witness node to be published on the global blockchain. After Node C receives the message receipt confirmation they can include an incentive header \([Receipt\_2]()\) to update the state of their payment channel with Node B. Node B follows the same procedure to update the state of their payment channel with Node A.
 
@@ -108,7 +108,7 @@ To verify and settle transactions we add steps 5 and 6 to the base message deliv
 
 **Step 5: Record Transactions**
 
-![Figure 18: Node D sends a message to witness Node G containing the hints for the transaction chain from Figure 16. Node G will verify the closing transaction with the multisignature from Nodes C and D, and if valid, publish it to settle the transaction.](.gitbook/assets/fig18.svg)
+![Figure 18: Node D sends a message to witness Node G containing the hints for the transaction chain from Figure 16. Node G will verify the closing transaction with the multisignature from Nodes C and D, and if valid, publish it to settle the transaction.](../.gitbook/assets/fig18.svg)
 
 Any node that has an incentive transaction can settle it on the blockchain if it includes the message receipt preimage from the destination node required to make the transaction valid. To do this, a node can repeat step 3 with a message composed of the “hint” information needed by a witness node to reconstruct the transaction to be verified or recorded. The destination node for this message is a witness node trusted or operated by the sender. The “hint” information and incentive header must pass through an internet gateway if the sending node is not connected to the internet.
 
@@ -116,7 +116,7 @@ The node that sends a message containing a transaction to be verified or recorde
 
 **Step 6: Verify Transactions**
 
-![Figure 19: Witness Node G returns their preimage as proof of receipt of the transaction chain sent by Node D and only returns the preimage to confirm that the chain has been verified and settled on the blockchain.](.gitbook/assets/fig19.svg)
+![Figure 19: Witness Node G returns their preimage as proof of receipt of the transaction chain sent by Node D and only returns the preimage to confirm that the chain has been verified and settled on the blockchain.](../.gitbook/assets/fig19.svg)
 
 A witness node receives, reconstructs, validates and records incentive transaction chains and receives an incentive payment in the same way as other relays or message receivers. Once the publishing transaction is sufficiently confirmed in the distributed ledger, the witness node can also provide a message that proves the transactions is settled, in addition to providing their preimage. The witness node sends an incentive header \([Witness]()\) back through the mesh network to the node that requested the transactions to be recorded in the same way as step 4 above. Any node that trusts the witness node can now depend on transactions that were included in or depend on the now confirmed transaction chain.
 

@@ -30,11 +30,11 @@ Figure 20 shows the effect of increasing the proportion of non-originating \(rel
 
 Overall these results show that the decrease in PDR caused by incentive header overhead is modest and only at low node densities. Incentives that increase the proportion of non-originating nodes increase PDR, especially at low densities.
 
-![Chart](.gitbook/assets/19.png)
+![Chart](../.gitbook/assets/19.png)
 
 **Figure 19**: This graph shows the average PDR using the AODV protocol on a network with 30 nodes at different densities.
 
-![Chart](.gitbook/assets/20.png)
+![Chart](../.gitbook/assets/20.png)
 
 **Figure 20**: This graph shows the average PDR using the AODV protocol across a range of node densities. We compare a network of 30 originating nodes to one with a third and a half non-originating relay only nodes.
 
