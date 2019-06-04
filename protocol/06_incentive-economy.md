@@ -6,11 +6,19 @@ Any node can earn a reward for relaying data for others and by being at the righ
 
 A node that originates a message must determine how much to prepay the relay nodes that deliver their data. Each relay node can set the price they expect in order to retransmit a packet of data. Gateway and witness nodes may also set prices for their services.
 
-Relays will charge a price,, that adequately compensate them for their cost to transmit a message, , plus some . For mobile nodes their cost derives from the opportunity cost of using battery power to transmit for other nodes instead of reserving it for their own use. Gateway and witness nodes can include a larger fee based on the demand for their services. Relay nodes that bridge subnets could also add a higher fee than those where alternative routes exist.
+Relays will charge a _price_ to relay that adequately compensate them for their _cost_ to transmit a message plus some _fee_. For mobile nodes their cost derives from the opportunity cost of using battery power to transmit for other nodes instead of reserving it for their own use. Gateway and witness nodes can include a larger fee based on the demand for their services. Relay nodes that bridge subnets could also add a higher fee than those where alternative routes exist.
 
-Nodes should also adjust their relay price to account for the PDR \(packet delivery ratio\) of the network. The lower the PDR the more packets a relay will have to transmit before one is delivered. Relays are not compensated for data that is not ultimately delivered. The price a relay nodeshould charge for a single relay transmission is then:
+Nodes should also adjust their relay price to account for the PDR \(packet delivery ratio\) of the network. The lower the PDR the more packets a relay will have to transmit before one is delivered. Relays are not compensated for data that is not ultimately delivered. The price a relay node _i_ should charge for a single relay transmission is then:
 
-Each relay node advertises their transmission price plus the minimum price advertised by all nodesin the set of neighbor nodesthat advertise a route to the destination node, .
+$$
+price_{relay_{i}} = {(cost_{relay} + fee)  \times {1 \over PDR}}
+$$
+
+Each _relay_ node advertises their transmission price plus the minimum price advertised by all nodes _n_ in the set of neighbor nodes _N_ that advertise a route to the destination node.
+
+$$
+price_{relay_{i} \to dest} = price_{relay_{i}} + \forall{n} \in N, min(price_{relay_{n} \to dest})
+$$
 
 Neighboring nodes that include too high a fee or require more intermediate nodes to reach a destination will advertise a higher relay price and not be selected as the next hop to deliver a packet.
 

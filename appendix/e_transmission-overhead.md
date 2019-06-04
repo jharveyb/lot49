@@ -10,7 +10,7 @@ The three smart contract systems are based on the following protocols:
 
 The Poon-Dryja state revocation protocol requires multiple communication phases for both the sender and receiver of a payment to exchange commitments to the new state and revoke the previous state. The eltoo state revocation protocol uses transaction replacement and only requires the payment sender to commit to a new channel state. In the eltoo/Schnorr variant all nodes involved in the message delivery only sign two transactions to update their channels along the route. In the eltoo/BLS variant each node signs a transaction to update their channel with the next node in the route.
 
-### Schnorr and MuSig Multi-Signatures
+### Schnorr and MuSig Multisignatures
 
 The MuSig\[18\] signing scheme requires three rounds of communication for a set of nodes to collaboratively generate a multi-signature for a transaction. For each multi-signature, a node must exchange with each other signing node a 32 byte nonce commitment, a 32 byte nonce and a 32 byte partial signature. A valid multi-signature is composed of a 32 byte combined nonce and 32 byte combined partial signature.
 
@@ -24,11 +24,11 @@ The total is the same, but the ratio of local transmission versus final signatur
 
 Assume four nodes create setup transactions for three channels \(A &lt;&gt; B &lt;&gt; C &lt;&gt; D\) with their neighbors. Each channel setup transaction requires two signatures. Also assume transactions must be relayed over 3 hops to be settled via an internet gateway node.
 
-#### One Multi-signature per channel
+#### One Multisignature per channel
 
-If we create one multi-signature with two signers per channel, then we must transmit 2 \* 96 bytes \(nonce commitment, nonce, partial signature\) per channel to create one 64 byte multi-signature. The total transmitted to sign a setup transactions for each of the three channels is 3 \* 2 \* 96 = 576 bytes. To transmit the multi-signature for a single channel three hops to a gateway requires transmitting 64 \* 3 hops = 192 bytes, or an additional 576 bytes for three channels. The total transmitted is thus 576 + 576 = 1152 bytes.
+If we create one multi-signature with two signers per channel, then we must transmit 2 \* 96 bytes \(nonce commitment, nonce, partial signature\) per channel to create one 64 byte multi-signature. The total transmitted to sign setup transactions for each of the three channels is 3 \* 2 \* 96 = 576 bytes. To transmit the multi-signature for a single channel three hops to a gateway requires transmitting 64 \* 3 hops = 192 bytes, or an additional 576 bytes for three channels. The total transmitted is thus 576 + 576 = 1152 bytes.
 
-#### No Multi-signature
+#### No Multisignature
 
 Without multi-signatures, each pair of nodes would exchange a 64 byte signature with their channel partner, or 64 \* 2 \* 3 channels = 384 bytes of information. Each of the three channels will also need to send 64 \* 2 = 128 bytes of signature information to the blockchain over three hops for a total of 128 \* 3 \* 3 hops = 1152 bytes of transmission. The total data transmitted would be 384 + 1152 = 1536 bytes.
 
@@ -84,9 +84,9 @@ The channel update phase \(described in the [Normal Operation](https://github.co
 | :--- | :--- | :--- | :--- |
 | type | 1 | 1 | 132 \(commitment\_signed\) |
 | channel\_id | 32 | - | inferred from destination node |
-| signature | 64 | 64 | sign remote commitment \(?\) |
+| signature | 64 | 64 | sign remote commitment |
 | num\_htlcs | 2 | - | assume single htlc signature |
-| htlc\_signature | num\_htlcs\*64 | 64 | commit to previous payments \(?\) |
+| htlc\_signature | num\_htlcs\*64 | 64 | commit to previous HTLC payments |
 | Total |  | 129 |  |
 
 #### revoke\_and\_ack
@@ -154,7 +154,9 @@ Unfortunately a Schnorr multi-signatures can not be used to reduce the overall a
 
 The setup phase for a new payment channel \(described in the [Channel Establishment](https://github.com/lightningnetwork/lightning-rfc/blob/master/02-peer-protocol.md#channel-establishment) section of Bolt \#2\) requires sending the following messages: the funding node sends ‘open\_channel’, the receiving node sends back ‘accept\_channel’, the funding node sends ‘funding\_created’, the receiving node sends back ‘funding\_signed’, the funding node sends ‘funding\_locked’ and finally the receiving node replies with its own ‘funding\_locked’ message.
 
-For the simplified versions of these messages it is assumed that we can use defaults for many of the parameters exchanged to open a channel, and that information about the funding pubkey is transmitted, but the ‘basepoint’ information can be inferred \[TODO: is it possible to infer this information from an extended public key?\].
+For the simplified versions of these messages it is assumed that we can use defaults for many of the parameters exchanged to open a channel, and that information about the funding pubkey is transmitted, but the ‘basepoint’ information can be inferred. For example, using BIP-32 extended public keys, and agree \(either in the protocol spec or in the protocol messages\) on which BIP-32 child key derivation paths \(child paths\) to use.
+
+
 
 #### open\_channel
 
@@ -359,7 +361,7 @@ The Lot49 proposal uses the eltoo scheme to update channel states. There is no r
 
 |  | Size Schnorr \(bytes\) | Size BLS \(bytes\) | Note |
 | :--- | :--- | :--- | :--- |
-| type | 1 | 1 | 2 \(eNegotiate1\) |
+| type | 1 | 1 | 2 \(Negotiate\_1\) |
 | channel\_id | - | - | inferred from destination node |
 | id | - | - | ID of the sender is included in the normal mesh routing header |
 | prepaid\_tokens \(amount\_msat\) | 1 | 1 | sat amount committed by message sender |
@@ -392,7 +394,7 @@ The setup phase for a new payment channel starts with a nearby node proposing a 
 
 |  | Size Schnorr \(bytes\) | Size BLS \(bytes\) | Note |
 | :--- | :--- | :--- | :--- |
-| type | 1 | 1 | 7 \(eClose1\) |
+| type | 1 | 1 | 1 \(Setup\_2\) or 7 \(Close\_1\) |
 | channel\_id | - | - | inferred from destination node |
 | id | - | - | ID of the sender is included in the normal mesh routing header |
 | prepaid\_tokens \(amount\_msat\) | 1 | 1 | msat committed by message sender |

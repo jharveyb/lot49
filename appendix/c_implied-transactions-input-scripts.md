@@ -37,7 +37,7 @@
     <tr>
       <td style="text-align:left">Update Tx</td>
       <td style="text-align:left">Spend from &#x2018;Setup&#x2019; or older &#x2018;Update&#x2019; UTXO
-        to &apos;Update&apos; UTXO with newer state. Occurs Immediately when this
+        to &apos;Update&apos; UTXO with newer state. Occurs immediately when this
         transaction is committed.</td>
       <td style="text-align:left">Sender: A
         <br />Receiver: B</td>
@@ -64,13 +64,13 @@
     <tr>
       <td style="text-align:left">Close Tx</td>
       <td style="text-align:left">Unconditionally move funds from the most recent &#x2018;Update&#x2019;
-        UTXO to a set of balances at final single signature &#x2018;Funding&#x2019;
-        UTXOs.</td>
-      <td style="text-align:left">Sender: A
+        UTXO to a set of balances at final single key &#x2018;Funding&#x2019; UTXOs.</td>
+      <td
+      style="text-align:left">Sender: A
         <br />Receiver: B</td>
-      <td style="text-align:left">A &amp; B sign
-        <br />
-      </td>
+        <td style="text-align:left">A &amp; B sign
+          <br />
+        </td>
     </tr>
   </tbody>
 </table>

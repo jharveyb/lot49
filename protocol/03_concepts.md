@@ -85,11 +85,9 @@ When a new payment channel is set up, a funding transaction commits tokens to th
 
 Nodes could keep an up-to-date view of settled transactions by operating as a full node that witness all new ledger updates as they are produced. However, over a low bandwidth mobile mesh network the overhead of broadcasting this information to all nodes is impractical. Instead, offline mesh nodes will delegate this task to online witness nodes they operate themselves or trust.
 
-Online witness nodes will only return the secret value for transactions that they receive from offline nodes if they are valid and can be settled. When an offline mesh node receives a secret from a witness node they trust, they can assume the corresponding transaction it was sent is valid and has been settled on the distributed ledger.
+Online witness nodes should always return the secret value included with the  transaction that they receive from offline nodes to indicate they received the request. Witness nodes should also return a message to the requesting offline node that commits to whether or not the transaction is valid on the Bitcoin blockchain.
 
-Nodes should treat transactions that include unconfirmed channel funding payments as possibly invalid until they receive confirmation from a witness node they trust.
-
-Interactions between offline mesh nodes and internet connected witness node is handled like a normal communication between nodes, but must end at an internet gateway node. Validating a transaction requires making a payment to the relay nodes and gateway node that relays the information across the mesh network to the internet. Like other destination nodes, witness nodes will receive payment for confirming receipt of a valid payload, in this case the payload is a transaction that must also be confirmed.
+Interactions between offline mesh nodes and internet connected witness nodes are handled like a normal communication between nodes, but must include an internet gateway node. Validating a transaction requires making a payment to the relay nodes and gateway node that relays the information across the mesh network to the internet. Like other destination nodes, witness nodes will receive payment for confirming receipt of a valid payload, in this case the payload is a transaction that must also be confirmed by the Bitcoin network. A payment sent to a witness node could also require one of two valid preimages. This would enable the witness node to confirm the message was received and signal to the sender that the  transaction was successfully confirmed or not depending on which preimage they return.
 
 ### 3.7 Settlement
 

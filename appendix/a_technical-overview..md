@@ -44,7 +44,7 @@ When two nodes commit to an eltoo trigger, refund or closing transaction, they w
 
 #### Public Keys
 
-This public key information must be exchanged between payment channel partner that cosign transactions. The eltoo protocol also requires using new public keys for every new settlement transaction. The most space efficient way to exchange public keys is with some pre-shared table that maps the extended public key of a node to a shorter node ID. The nonce or index to specify the exact path of each public key would also need to be sent for each transaction. We have not specified how his public key information will be communicated and used to recreate complete transactions that can be settled on the Bitcoin network.
+This public key information must be exchanged between payment channel partner that cosign transactions. The eltoo protocol also requires using new public keys for every new settlement transaction. The most space efficient way to exchange public keys is with some pre-shared table that maps the extended public key of a node to a shorter node ID. The nonce or index to specify the exact path of each public key would also need to be sent for each transaction. We have not specified how this public key information will be communicated and used to recreate complete transactions that can be settled on the Bitcoin network.
 
 #### Bitcoin Script
 

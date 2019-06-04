@@ -11,11 +11,11 @@
   </thead>
   <tbody>
     <tr>
-      <td style="text-align:left">Setup 1</td>
+      <td style="text-align:left">Setup_1</td>
       <td style="text-align:left">Node B signs a transactions similar to the initial Settlement Transaction
-        from eltoo [25]. Node B signs to commits to refund the initial channel
-        funding from node A. This header from B proposes creating a channel so
-        that A can pay B.</td>
+        from eltoo [25]. Node B signs to commit to refund the initial channel funding
+        from node A. This header from B proposes creating a channel so that A can
+        pay B.</td>
       <td style="text-align:left">
         <p>Sender: B</p>
         <p>Receiver: A</p>
@@ -26,7 +26,7 @@
       </td>
     </tr>
     <tr>
-      <td style="text-align:left">Setup 2</td>
+      <td style="text-align:left">Setup_2</td>
       <td style="text-align:left">Node A signs a transaction similar to the initial Funding Transaction
         from eltoo [25] to commit the initial channel funding to a multisig address
         controlled by both Nodes A and B. This transaction can be fully refunded
@@ -42,7 +42,7 @@
       </td>
     </tr>
     <tr>
-      <td style="text-align:left">Negotiate 1</td>
+      <td style="text-align:left">Negotiate_1</td>
       <td style="text-align:left">Node A proposes an update to the payment channel balance that increases
         Node B&#x2019;s balance if Node D returns the preimage from the attached
         message m.</td>
@@ -56,7 +56,7 @@
         <br />Signed by Node A</td>
     </tr>
     <tr>
-      <td style="text-align:left">Negotiate 2</td>
+      <td style="text-align:left">Negotiate_2</td>
       <td style="text-align:left">Node C proposes an update to the payment channel balance that increases
         Node D&#x2019;s balance if Node D returns the preimage from the attached
         message m. This is similar to Negotiate 1 but Node C proposes to pay the
@@ -72,7 +72,7 @@
         <br />Signed by Node C</td>
     </tr>
     <tr>
-      <td style="text-align:left">Negotiate 3</td>
+      <td style="text-align:left">Negotiate_3</td>
       <td style="text-align:left">Node D proposes an update to the payment channel balance that increases
         Node C&#x2019;s balance if Node A signs the preimage attached message m.
         This is similar to Negotiate 2 but Node D proposes pays along an existing
@@ -87,7 +87,7 @@
         <br />Signed by Node D</td>
     </tr>
     <tr>
-      <td style="text-align:left">Receipt 1</td>
+      <td style="text-align:left">Receipt_1</td>
       <td style="text-align:left">Node D proves delivery of message m by returning the preimage contained
         in message m and hashed with the message.</td>
       <td style="text-align:left">Sender: D
@@ -102,7 +102,7 @@
       </td>
     </tr>
     <tr>
-      <td style="text-align:left">Receipt 2</td>
+      <td style="text-align:left">Receipt_2</td>
       <td style="text-align:left">Node C proves delivery of message m to renegotiate the state of their
         channel with B.</td>
       <td style="text-align:left">Sender: C
@@ -113,7 +113,7 @@
         <br />Settlement Tx Signed by Node C</td>
     </tr>
     <tr>
-      <td style="text-align:left">Close 1</td>
+      <td style="text-align:left">Close_1</td>
       <td style="text-align:left">Node B proposes to close the channel with node A at the last negotiated
         distribution.</td>
       <td style="text-align:left">Sender: B
@@ -126,7 +126,7 @@
       </td>
     </tr>
     <tr>
-      <td style="text-align:left">Close 2</td>
+      <td style="text-align:left">Close_2</td>
       <td style="text-align:left">Node A agrees to close the channel with node B at the last negotiated
         distribution.</td>
       <td style="text-align:left">Sender: A

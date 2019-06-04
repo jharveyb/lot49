@@ -88,3 +88,13 @@
 
 \[44\] Comte V. Insight \#3: Running a Lightning enabled Point of Sale offline. URL: [https://www.puzzle.ch/de/blog/articles/2018/11/21/takeaways-from-the-lightning-hackday-in-nyc](https://www.puzzle.ch/de/blog/articles/2018/11/21/takeaways-from-the-lightning-hackday-in-nyc). Accessed, 17-May-2019.
 
+\[45\] Roasbeef. \[WIP\] multi: add new draft key send mode for spontaneous payments. URL: [https://github.com/lightningnetwork/lnd/pull/2455](https://github.com/lightningnetwork/lnd/pull/2455). Access, 29-May-2019.
+
+\[46\] Dryja, T. \(2019\).Utreexo: A dynamic hash-based accumulator optimized for the Bitcoin UTXO set. Cryptology ePrint Archive, Report 2019/611. [ia.cr/2019/611](https://ia.cr/2019/611). Accessed 4-June-2019.
+
+\[47\] Todd, P. \(2017\). Scalable Semi-Trustless Asset Transfer via Single-Use-Seals and Proof-of-Publication. URL: [https://petertodd.org/2017/scalable-single-use-seal-asset-transfer\#proof-of-publication-ledger](https://petertodd.org/2017/scalable-single-use-seal-asset-transfer#proof-of-publication-ledger). Accessed 4-June-2019.
+
+
+
+
+

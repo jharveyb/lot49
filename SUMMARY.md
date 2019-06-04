@@ -18,9 +18,9 @@
 
 ## Appendix
 
-* [Appendix A.Technical Overview](appendix-1/a_technical-overview..md)
-* [Appendix B. Incentive Headers](appendix-1/b_incentive-headers.md)
-* [Appendix C. Implied Transactions / Input Scripts](appendix-1/c_implied-transactions-input-scripts.md)
-* [Appendix D. BLS versus Schnorr](appendix-1/d_bls-versus-schnorr.md)
-* [Appendix E. Transmission Overhead](appendix-1/e_transmission-overhead.md)
+* [Appendix A.Technical Overview](appendix/a_technical-overview..md)
+* [Appendix B. Incentive Headers](appendix/b_incentive-headers.md)
+* [Appendix C. Implied Transactions / Input Scripts](appendix/c_implied-transactions-input-scripts.md)
+* [Appendix D. BLS versus Schnorr](appendix/d_bls-versus-schnorr.md)
+* [Appendix E. Transmission Overhead](appendix/e_transmission-overhead.md)
 

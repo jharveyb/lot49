@@ -14,9 +14,9 @@ Because mesh nodes will be offline most of the time we must consider this situat
 
 The primary security for offline nodes comes from long delays for transactions that unilaterally close a channel. This gives the other party time to notice and submit a more current update. Our system will have to use timeouts adapted to the characteristics of the off-grid community. If users typically have internet access at home or via gateways once a day, then timeouts can be set shorter than if access is once a week. One consequence of this is that the less frequently nodes have internet access, the more incentive they have to cooperatively close channels to prevent locking up their liquidity.
 
-#### Watch Towers
+#### Watchtowers
 
-The Lightning Network white paper contemplates a private and trust minimized third party called a “watch tower”[\[12\]]()[\[30\]]() who could be incentivized to always be online to watch for channels settled with old transactions. It is more difficult to outsource channel monitoring for an offline mesh network node because it requires sending encrypted transactions to the watch tower. This may not be possible in a bandwidth efficient way over a mesh network. Instead it is more likely that witness nodes could be incentivized to monitor when opening transactions are settled as an additional service to offline nodes.
+The Lightning Network white paper contemplates a private and trust minimized third party also called a “watchtower”\[12\]\[30\], who could be incentivized to always be online to watch for channels settled with out of date update transactions. It is more difficult to outsource channel monitoring for an offline mesh network node because it requires sending encrypted transactions to the watchtower. This may not be possible in a bandwidth efficient way over a mesh network. Instead it is more likely that witness nodes could be incentivized to monitor and notify offline nodes when channels are settled as an additional service to offline nodes. Watchtowers could also be opportunistically sent the latest fully signed update transaction held by a node. These checkpoints can be sent when near a gateway and could only be used by the watchtower when an invalid update appears on the blockchain.
 
 ### 5.2 Other Risks
 
@@ -30,13 +30,13 @@ Each node along a route can heuristically decide whether or not to relay a messa
 
 #### Unsigned for Delivery
 
-The data receiver must the encrypted preimage of the data for the incentive payment associated with that data to be valid. There is no way for the last relay node to know if their next transmission, which includes the data payload, will be overheard by the message receiver. A malicious message receiver could receive a message and choose not to acknowledge receipt.
+The data receiver must reveal a preimage derived from the data for the incentive payment associated with that data to be valid. There is no way for the last relay node to know if their next transmission, which includes the data payload, will be overheard by the message receiver. A malicious message receiver could receive a message and choose not to acknowledge receipt.
 
 Message receivers also receive incentive payments when they sign to prove they received the message. This is the primary way we encourage message receivers to follow the incentive protocol. However, when a message sender and receiver are colluding, or controlled by the same entity, this payment may not be relevant. For example, if the sender and receiver are the same entity then the sender can avoid the cost to send a message if the receiver always fails to sign and prove they received it. This situation can only be solved by nodes noticing the pattern and blacklisting responsible nodes.
 
 #### Sybil Relays
 
-Message destination nodes should receive whatever value was committed by the sender, but not used by relay nodes. This discourages relays from introducing false hops to earn more value. A message destination node that does not collect any value when they receive the message may not sign to prove they received it. Also, the more value received by the destination node the more likely they are to forward the transaction to an internet gateway to be confirmed on the blockchain which reveals the preimage to other relays nodes that depend on that preimage. If a relay wishes to earn more value they can publish a higher relay cost so nodes can incorporate this information in their routing metrics.
+Message destination nodes should receive whatever value was committed by the sender, but not used by relay nodes. This discourages relays from claiming more fees than they advertised. A message destination node that does not collect any value when they receive a message may not reveal the preimage that proves they received it. Also, the more value received by the destination node the more likely they are to forward the transaction to an internet gateway to be confirmed on the blockchain which reveals the preimage to other relays nodes that depend on that preimage.  If a relay wishes to earn more value they can publish a higher relay cost so nodes can incorporate this information in their routing metrics.
 
 #### False Witness Nodes
 
@@ -66,9 +66,9 @@ A node unconstrained by power or opportunities to transmit can always relay ever
 
 #### Rational Micropayments
 
-To solve the problem of settling micropayments that are not economically viable due to transaction fees various solutions have been proposed [\[41\]](). For our system we believe probabilistic micropayments would be a viable option if they are supported by the Bitcoin script language.
+To solve the problem of settling micropayments that are not economically viable due to transaction fees various solutions have been proposed \[41\]. For our system we believe probabilistic micropayments would be a viable option if they are supported by the Bitcoin script language.
 
 It is also possible to amortize payments over multiple messages if the payment for a single message is not economical. In this case relay nodes take a larger risk that they will not receive payment until multiple messages have been delivered. However, this would be no worse than accepting micropayments that they are not able to spend.
 
-Another approach currently implemented in the Lightning Network is to ‘trim outputs’ [\[42\]]() that are below a predefined value. The value from trimmed outputs are committed to the transaction fee instead of creating an unspendable output. Trimmed outputs can later be credited to economically rational outputs when a payment channel is settled.
+Another approach currently implemented in the Lightning Network is to ‘trim outputs’ \[42\] that are below a predefined value. The value from trimmed outputs are committed to the transaction fee instead of creating an unspendable output. Trimmed outputs can later be credited to economically rational outputs when a payment channel is settled.
 
