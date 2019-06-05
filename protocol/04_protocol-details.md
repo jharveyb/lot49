@@ -42,7 +42,7 @@ Nodes that re-transmit message delivery receipts do not need to wait for an on-c
 
 Witness nodes are expected to be persistently connected to the internet and operated by mesh network users to facilitate more efficient confirmation of settled transactions. A witness node receives transactions as a data payload from mesh nodes that wish to have payment channel set up and settlement transactions confirmed by the Bitcoin blockchain. If a transaction is valid, but not yet confirmed on the ledger, the witness node will submit the transaction to the blockchain and wait for it to be confirmed. They then send the secret included with the transaction payload back to the original node that requested it be validated.
 
-Instead of running their own online witness node, off-grid mesh nodes can also use nodes run by others they trust and can incentivize their function validating transactions by including payments that the witness node can only collect if the transaction is confirmed on the blockchain. It also may be possible to redeem prepaid Lightning invoices with online nodes to trustlessly fund new channels. \[44\]
+Instead of running their own online witness node, off-grid mesh nodes can also use nodes run by others they trust and can incentivize their function of validating transactions by including payments that the witness node can only collect if the transaction is confirmed on the blockchain. It also may be possible to redeem prepaid Lightning invoices with online nodes to trustlessly fund new channels. \[44\]
 
 ### 4.2 Data Relay
 
