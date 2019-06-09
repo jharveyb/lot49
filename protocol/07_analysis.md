@@ -1,6 +1,6 @@
 # 7. Analysis
 
-In our simulations, we analyze the effect of adding our incentive protocol to the IETF standard on-demand routing protocol called “Ad hoc On-Demand Distance Vector” routing \(AODV\) \[33\].
+In our simulations, we analyze the effect of adding our incentive protocol to the IETF standard on-demand routing protocol called “Ad hoc On-Demand Distance Vector” routing \(AODV\) \[[33](references.md#33-perkins-c-royer-e-2000-the-ad-hoc-on-demand-distance-vector-protocol-in-ad-hoc-networking-addison-wesley-pp-173-219-2000)\].
 
 ### 7.1 Delivery Ratio
 
@@ -8,7 +8,7 @@ We model the effect of increased packet sizes due to additional incentive protoc
 
 Incentive headers are appended to the standard routing headers that accompany payload data. The largest part of an incentive header is a 64 byte signature. We assume additional hint information of approximately 6 bytes plus 4 bytes per hop with an average of 3 hops for an estimated total of 100 bytes per incentive header.
 
-We use an ns-3 \[34\] simulation of a mesh network composed of 30 nodes running the AODV routing protocol at different node densities. Nodes randomly move and run an application that transmits a 50 byte payload to another random node selected from a fixed subset of originating nodes. Nodes send data every 30 seconds for a total of 20 minutes with some initial random start time and transmit at a data rate of 100 Kbps.
+We use an ns-3 \[[34](references.md#34-ns-3-url-http-www-nsnam-orgl-accessed-2018-08-01)\] simulation of a mesh network composed of 30 nodes running the AODV routing protocol at different node densities. Nodes randomly move and run an application that transmits a 50 byte payload to another random node selected from a fixed subset of originating nodes. Nodes send data every 30 seconds for a total of 20 minutes with some initial random start time and transmit at a data rate of 100 Kbps.
 
 Our simulations focus on packet delivery ratio \(PDR\) which measures the ratio of packets sent versus the number delivered.
 
