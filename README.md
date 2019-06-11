@@ -8,7 +8,7 @@ Richard Myers, goTenna Inc.
 
 [rich@gotenna.com](mailto:rich@gotenna.com)
 
-June 4, 2019
+June 11, 2019
 
 DRAFT version 0.8.5
 
