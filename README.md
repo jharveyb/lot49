@@ -4,9 +4,9 @@ description: A lightweight protocol to incentivize mobile peer-to-peer communica
 
 # Lot49
 
-Richard Myers, goTenna Inc.
+Richard Myers, Global Mesh Labs LLC \(subsidiary of goTenna Inc.\)
 
-[rich@gotenna.com](mailto:rich@gotenna.com)
+[rich@goTenna.com](mailto:rich@gotenna.com)
 
 June 11, 2019
 
