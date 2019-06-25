@@ -3,6 +3,8 @@
 #include "Utils.hpp"
 #include <map>
 #include <fstream>
+#include <cassert>
+#include <algorithm>
 
 using namespace std;
 using namespace lot49;

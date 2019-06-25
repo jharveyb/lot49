@@ -4,6 +4,7 @@
 #include "ImpliedTransaction.hpp"
 #include "Utils.hpp"
 #include <algorithm>
+#include <cassert>
 
 using namespace std;
 using namespace lot49;

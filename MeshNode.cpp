@@ -19,7 +19,7 @@ using namespace lot49;
 int MeshNode::sSeed = 0; 
 double MeshNode::sGatewayPercent = 0.2; // percent of nodes that are also internet gateways
 double MeshNode::sOriginatingPercent = 1.0;
-double MeshNode::sMaxSize = 5000; // meters width
+int MeshNode::sMaxSize = 5000; // meters width
 double MeshNode::sMoveRate = 85; // meters per minute
 int MeshNode::sPauseTime = 5; // minutes of simulation
 int MeshNode::sCurrentTime = 0; // minutes of simulation
@@ -334,7 +334,7 @@ MeshNode::MeshNode()
     mIsGateway = false;
  
     // initialize position and waypoint
-    std::uniform_int_distribution<double> pos(-sMaxSize/2, sMaxSize/2);
+    std::uniform_int_distribution<int> pos(-sMaxSize/2, sMaxSize/2);
     mWaypoint.first = pos(rng);
     mWaypoint.second = pos(rng);
     mCurrentPos.first = pos(rng);
@@ -1474,7 +1474,7 @@ void MeshNode::UpdateSimulation()
         // if at waypoint, pick new waypoint and pause
         double distance = Distance(n.mCurrentPos, n.mWaypoint);
         if (distance <= sMoveRate) {
-            std::uniform_int_distribution<double> pos(-sMaxSize/2, sMaxSize/2);
+            std::uniform_int_distribution<int> pos(-sMaxSize/2, sMaxSize/2);
             n.mWaypoint.first = pos(rng);
             n.mWaypoint.second = pos(rng);
             n.mPausedUntil = sCurrentTime + sPauseTime;

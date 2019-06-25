@@ -2,6 +2,8 @@
 #include "MeshNode.hpp"
 #include "ImpliedTransaction.hpp"
 #include <random>
+#include <cassert>
+#include <algorithm>
 
 static std::default_random_engine rng(std::random_device{}());
 static std::uniform_int_distribution<uint8_t> dist(0, 255); //(min, max)

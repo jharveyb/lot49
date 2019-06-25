@@ -161,7 +161,7 @@ class MeshNode
 
     static double sGatewayPercent; // percent of nodes that are also internet gateways
     static double sOriginatingPercent; // percent of nodes that originate messages
-    static double sMaxSize; // meters width
+    static int sMaxSize; // meters width
     static double sMoveRate; // meters per minute
     static int sPauseTime; // minutes of simulation
     static int sPayloadSize; // bytes
