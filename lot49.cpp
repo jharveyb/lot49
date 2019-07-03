@@ -17,7 +17,7 @@ using namespace lot49;
 // TODO: use  48 byte signatures, not 96 byte: https://twitter.com/sorgente711/status/1025451092610433024
 
 bool testBLS();
-
+bool testMuSig();
 void test1();
 void test2();
 void test3();
@@ -34,6 +34,8 @@ void TestRoute(HGID inSender, HGID inReceiver, std::string& inMessage)
 int main(int argc, char* argv[]) 
 {
     cout << "testBLS():  " << (testBLS() ? "success!" : "failed!") << endl;
+
+    cout << "testMuSig():  " << (testMuSig() ? "success!" : "failed!") << endl;
 
     // test with pre-defined paths
     //test1();
@@ -437,4 +439,74 @@ bool testBLS()
     ok = aggSigFinal.Verify();
 
     return ok;
+}
+
+/* Create a key with a seed; if seed is nullptr will generate a random key. */
+int create_key(const secp256k1_context* ctx, const uint8_t* seed, uint8_t* seckey, secp256k1_pubkey* pubkey)
+{
+    int ret;
+    if (seed != NULL) {
+        memcpy(seckey, seed, 32);
+    } else {
+        ifstream urandom("/dev/urandom", ios::in|ios::binary);
+        if (urandom) {
+            urandom.read(reinterpret_cast<char*>(seckey), 32);
+            urandom.close();
+        } else {
+            urandom.close();
+            return 0;
+        }
+    }
+    if (!secp256k1_ec_seckey_verify(ctx, seckey)) {
+        return 0;
+    } else {
+        ret = secp256k1_ec_pubkey_create(ctx, pubkey, seckey);
+        return ret;
+    }
+}
+
+bool testMuSig()
+{
+    // Example seed, used to generate private key. Always use
+    // a secure RNG with sufficient entropy to generate a seed.
+    uint8_t seed[] = {0, 50, 6, 244, 24, 199, 1, 25, 52, 88, 192,
+                      19, 18, 12, 89, 6, 220, 18, 102, 58, 209,
+                      82, 12, 62, 89, 110, 182, 9, 44, 20, 254, 22};
+
+    secp256k1_context* ctx;
+    size_t num_signers = 3;
+    size_t pubkeysize = 33; // always serialize keys in compressed form
+    uint8_t i;
+    uint8_t seckeys[num_signers][32];
+    secp256k1_pubkey pubkeys[num_signers];
+    uint8_t serialized_pubkeys[num_signers][33];
+    secp256k1_pubkey combined_pk;
+    uint8_t msg[32] = "this_could_be_the_hash_of_a_msg";
+    secp256k1_schnorrsig sig;
+
+    /* Create a context for signing and verification */
+    ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
+    cout << "Creating key pairs......" << endl;
+    for (i = 0; i < num_signers; i++) {
+        if (!create_key(ctx, seed, seckeys[i], &pubkeys[i])) {
+            cout << "keygen failed" << endl;
+            return false;
+        } else {
+            cout << "sk" << i << ": " << std::hex;
+            for ( uint8_t byte : seckeys[i] ) { cout << std::setw(2) << std::setfill('0') << static_cast<int>(byte); }
+            cout << endl;
+            secp256k1_ec_pubkey_serialize(ctx, serialized_pubkeys[i], &pubkeysize, &pubkeys[i], SECP256K1_EC_COMPRESSED);
+            cout << "pk" << i << ": " << std::hex;
+            for ( uint8_t byte : serialized_pubkeys[i] ) { cout << std::setw(2) << std::setfill('0') << static_cast<int>(byte); }
+             cout << endl;
+            seed[0]++;
+        }
+    }
+    cout << "Combining pubkeys......" << endl;
+    if (!secp256k1_musig_pubkey_combine(ctx, nullptr, &combined_pk, nullptr, pubkeys, num_signers)) {
+        cout << "key combining failed" << endl;
+        return false;
+    }
+
+    return true;
 }

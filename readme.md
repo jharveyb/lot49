@@ -1,9 +1,9 @@
-# Lot49 
+# Lot49
 
 ## Motivation
 
 > "I’m interested in how the blockchain has shown you can build a protocol that incents the use of the protocol itself."
-> 
+>
 > -- [Daniela Perdomo, goTenna Forum](https://community.gotennamesh.com/t/gotenna-mesh-and-blockchain-potential-applications-and-integrations/145/5)
 
 The goal of the Lot49 project is to use concepts and technology developed for decentralized value transfer protocols to solve similar problems that exist for adhoc mesh communication protocols. From Daniela's forum post:
@@ -16,7 +16,7 @@ The goal of the Lot49 project is to use concepts and technology developed for de
 * LOCAL V. GLOBAL: How do we incent people to build bridges between mesh networks?
 * NETWORK INTEGRITY: How do we incent & validate integrity in a mostly off-grid, entirely mobile mesh network?
 
-This project is a high-level simulation that explores one possible approach to address these questions. The proposed Lot49 protocol is a modified version of the [Bitcoin Lightning Network](https://en.wikipedia.org/wiki/Lightning_Network) protocol adapted to operate more efficiently within the communication constraints of a mobile mesh radio network. In particular, Lot49 adopts changes to the Lightning protocol to reduce the amount of data exchanged between off-grid nodes and to reduce the amount of data that must be sent through internet gateways to confirm transactions. 
+This project is a high-level simulation that explores one possible approach to address these questions. The proposed Lot49 protocol is a modified version of the [Bitcoin Lightning Network](https://en.wikipedia.org/wiki/Lightning_Network) protocol adapted to operate more efficiently within the communication constraints of a mobile mesh radio network. In particular, Lot49 adopts changes to the Lightning protocol to reduce the amount of data exchanged between off-grid nodes and to reduce the amount of data that must be sent through internet gateways to confirm transactions.
 
 To reduce the amount of data exchanged between nodes we use a less interactive state update mechanism. To reduce the amount of data settled on the blockchain through internet gateways we use an aggregate signature scheme to combine transactions. Specifically, this simulation assumes the [eltoo](https://blockstream.com/eltoo.pdf) update mechanism and non-interactive BLS signature aggregation. Different combinations of update mechanism/signature scheme such as the current Poon-Dryja/ECDSA, eltoo/Schnorr and eltoo/BLS are examined [here](doc/transmission_overhead.md).
 
@@ -94,7 +94,7 @@ Q: Why use eltoo and not use the Poon-Dryja channel state update scheme currentl
 A: The current Lightning Network channel state update mechanism requires both parties hold different HTLC contracts and old states must be revoked before a new state is valid. This requires 1.5 round trip communications between the nodes, as follows:
 
 * Node A signs a new HTLC to commit a payment to Node B
-* Node B signs a new HTLC and revokes their previous HTLC with Node A 
+* Node B signs a new HTLC and revokes their previous HTLC with Node A
 * Node A revokes their previous HTLC with Node B
 
 Using eltoo both nodes use the same HTLC and there is no penalty if a node settles an out-of-date HTLC. This means that a single commitment from the payment sender is enough to provisionally update a channel. For example:
@@ -107,9 +107,35 @@ Note: eltoo uses symetric HTLC transactions so Node B does not need to wait for 
 
 The current state of the code is rough, lightly documented and still in flux. The code currently simulates the exchange of message data and incentive heades between randomly moving nodes. It also reconstitutes mock transactions from incentive headers and simulates settling them on a blockchain.
 
-Dependency:
-* [bls-signature library](https://github.com/Chia-Network/bls-signatures) to create non-interactive aggregate signatures.
+Dependencies:
 
+* [bls-signatures library](https://github.com/Chia-Network/bls-signatures) to create non-interactive aggregate signatures.
+
+* [libsecp256k1-zkp library](https://github.com/ElementsProject/secp256k1-zkp) to create interactive aggregate signatures.
+
+Note that secp256k1-zkp/include/secp256k1_musig.h:272:75 should be changed from 4 to 3; otherwise building lot49 will fail.
+
+To build:
+
+    $ git submodule update --init --recursive
+    $ cd bls-signatures
+    $ mkdir build
+    $ cd build
+    $ git checkout "f114ffe"
+    $ cmake ../
+    $ cmake --build . -- -j $(nproc)
+    $ cd ../..
+    $ cd secp256k1-zkp
+    $ git checkout "11af701"
+    $ ./autogen.sh
+    $ ./configure --prefix=$(pwd)/.libs --enable-experimental --enable-module-musig --enable-module-schnorrsig --enable-benchmark=no
+    $ make -j $(nproc)
+    $ make install
+    $ cd ..
+    $ mkdir build
+    $ cd build
+    $ cmake ../
+    $ cmake --build . -- -j $(nproc)
 
 ## Analysis
 
