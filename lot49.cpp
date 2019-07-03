@@ -5,6 +5,11 @@
 #include "Utils.hpp"
 #include <algorithm>
 #include <cassert>
+extern "C" {
+#include <secp256k1.h>
+#include <secp256k1_schnorrsig.h>
+#include <secp256k1_musig.h>
+}
 
 using namespace std;
 using namespace lot49;

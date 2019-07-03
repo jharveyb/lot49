@@ -14,13 +14,16 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/bls-signatures/contrib/relic/include
   ${CMAKE_CURRENT_SOURCE_DIR}/bls-signatures/build/contrib/relic/include
   ${CMAKE_CURRENT_SOURCE_DIR}/bls-signatures/contrib/catch  
+  ${CMAKE_CURRENT_SOURCE_DIR}/secp256k1-zkp/.libs/include
   )
 
 link_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/bls-signatures/build
+    ${CMAKE_CURRENT_SOURCE_DIR}/secp256k1-zkp/.libs/lib
   )
 
 find_library(bls NAMES libbls.a PATHS ${CMAKE_CURRENT_SOURCE_DIR}/bls-signatures/build)
+find_library(secp256k1 NAMES libsecp256k1.a PATHS ${CMAKE_CURRENT_SOURCE_DIR}/secp256k1-zkp/.libs/lib)
 
 add_executable(lot49 lot49.cpp MeshNode.cpp ImpliedTransaction.cpp Ledger.cpp Utils.cpp)
-target_link_libraries(lot49 bls)
+target_link_libraries(lot49 bls secp256k1)
