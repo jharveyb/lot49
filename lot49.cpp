@@ -444,8 +444,7 @@ bool testBLS()
 /* Create a key with a seed; if seed is nullptr will generate a random key. */
 int create_key(const secp256k1_context* ctx, const uint8_t* seed, uint8_t* seckey, secp256k1_pubkey* pubkey)
 {
-    int ret;
-    if (seed != NULL) {
+    if (seed != nullptr) {
         memcpy(seckey, seed, 32);
     } else {
         ifstream urandom("/dev/urandom", ios::in|ios::binary);
@@ -460,8 +459,110 @@ int create_key(const secp256k1_context* ctx, const uint8_t* seed, uint8_t* secke
     if (!secp256k1_ec_seckey_verify(ctx, seckey)) {
         return 0;
     } else {
-        ret = secp256k1_ec_pubkey_create(ctx, pubkey, seckey);
-        return ret;
+        return secp256k1_ec_pubkey_create(ctx, pubkey, seckey);
+    }
+}
+
+/* Sign a message hash with the given key pairs and store the result in sig */
+int sign(const secp256k1_context* ctx, unsigned char seckeys[][32], const secp256k1_pubkey* pubkeys, const unsigned char* msg32, secp256k1_schnorrsig *sig, size_t num_signers) {
+    secp256k1_musig_session musig_session[num_signers];
+    uint8_t nonce_commitment[num_signers][32];
+    const uint8_t *nonce_commitment_ptr[num_signers];
+    secp256k1_musig_session_signer_data signer_data[num_signers][num_signers];
+    secp256k1_pubkey nonce[num_signers];
+    int i, j;
+    secp256k1_musig_partial_signature partial_sig[num_signers];
+    secp256k1_pubkey musig_pk;
+
+    for (i = 0; i < num_signers; i++) {
+        uint8_t session_id32[32];
+        uint8_t pk_hash[32];
+        secp256k1_pubkey combined_pk;
+
+        /* Create combined pubkey and initialize signer data */
+        if (!secp256k1_musig_pubkey_combine(ctx, nullptr, &combined_pk, pk_hash, pubkeys, num_signers)) {
+            return 0;
+        }
+
+        /* Save combined key for veriying group signature */
+        memcpy(&musig_pk, &combined_pk, 64);
+
+        /* Create random session ID. It is absolutely necessary that the session ID
+         * is unique for every call of secp256k1_musig_session_initialize. Otherwise
+         * it's trivial for an attacker to extract the secret key! */
+        ifstream urandom("/dev/urandom", ios::in|ios::binary);
+        if (urandom) {
+            urandom.read(reinterpret_cast<char*>(session_id32), 32);
+            urandom.close();
+        } else {
+            urandom.close();
+            return 0;
+        }
+
+        /* Initialize session */
+        if (!secp256k1_musig_session_initialize(ctx, &musig_session[i], signer_data[i], nonce_commitment[i], session_id32, msg32, &combined_pk, pk_hash, num_signers, i, seckeys[i])) {
+            return 0;
+        }
+        nonce_commitment_ptr[i] = &nonce_commitment[i][0];
+    }
+        
+    /* Communication round 1: Exchange nonce commitments */
+    for (i = 0; i < num_signers; i++) {
+        /* Set nonce commitments in the signer data and get the own public nonce */
+        if (!secp256k1_musig_session_get_public_nonce(ctx, &musig_session[i], signer_data[i], &nonce[i], nonce_commitment_ptr, num_signers)) {
+            return 0;
+        }
+    }
+
+    /* Communication round 2: Exchange nonces */
+    for (i = 0; i < num_signers; i++) {
+        for (j = 0; j < num_signers; j++) {
+            if (!secp256k1_musig_set_nonce(ctx, &signer_data[i][j], &nonce[j])) {
+                /* Signer j's nonce does not match the nonce commitment. In this case
+                 * abort the protocol. If you make another attempt at finishing the
+                 * protocol, create a new session (with a fresh session ID!). */
+                return 0;
+            }
+        }
+        if (!secp256k1_musig_session_combine_nonces(ctx, &musig_session[i], signer_data[i], num_signers, nullptr, nullptr)) {
+            return 0;
+        }
+    }
+
+    /* Each signer produces partial signatures */
+    for (i = 0; i < num_signers; i++) {
+        if (!secp256k1_musig_partial_sign(ctx, &musig_session[i], &partial_sig[i])) {
+            return 0;
+        }
+    }
+
+    /* Communication round 3: Exchange partial signatures */
+    if (!secp256k1_musig_partial_sig_combine(ctx, &musig_session[0], sig, partial_sig, num_signers)) {
+        return 0;
+    }
+
+    /* Produce & check group signature before the partials */
+    if (!secp256k1_schnorrsig_verify(ctx, sig, msg32, &musig_pk)) {
+        for (i = 0; i < num_signers; i++) {
+            for (j = 0; j < num_signers; j++) {
+                /* To check whether signing was successful, it suffices to either verify
+                * the the combined signature with the combined public key using
+                * secp256k1_schnorrsig_verify, or verify all partial signatures of all
+                * signers individually. Verifying the combined signature is cheaper but
+                * verifying the individual partial signatures has the advantage that it
+                * can be used to determine which of the partial signatures are invalid
+                * (if any), i.e., which of the partial signatures cause the combined
+                * signature to be invalid and thus the protocol run to fail. It's also
+                * fine to first verify the combined sig, and only verify the individual
+                * sigs if it does not work.
+                */
+                if (!secp256k1_musig_partial_sig_verify(ctx, &musig_session[i], &signer_data[i][j], &partial_sig[j], &pubkeys[j])) {
+                    return 0;
+                }
+            }
+        }
+    } else {
+        return 1;
     }
 }
 
@@ -508,5 +609,12 @@ bool testMuSig()
         return false;
     }
 
+    cout << "Signing and verifying......" << endl;
+    if (!sign(ctx, seckeys, pubkeys, msg, &sig, num_signers)) {
+        cout << "signing or verifying failed" << endl;
+        return false;
+    }
+
+    secp256k1_context_destroy(ctx);
     return true;
 }
