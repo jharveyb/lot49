@@ -38,10 +38,10 @@ int main(int argc, char* argv[])
     cout << "testMuSig():  " << (testMuSig() ? "success!" : "failed!") << endl;
 
     // test with pre-defined paths
-    //test1();
+    test1();
 
     // test randomly moving nodes
-    test2();
+    //test2();
 
     // test aggregation of specific keys and messages
     //test3();
@@ -233,7 +233,7 @@ void test1()
 
     // create linear route: A <-> B <-> C <-> D1
     MeshRoute route1;
-    for (int i = 0; i < MAX_NODES-1; i++) {
+    for (int i = 0; i < MAX_NODES-2; i++) {
         HGID hgid = MeshNode::FromIndex(i).GetHGID();
         route1.push_back(hgid);
     }
@@ -244,11 +244,11 @@ void test1()
     HGID D1 = route1.back();
     MeshRoute route2 = route1;
     route2.pop_back();
-    HGID D2 = MeshNode::FromIndex(MAX_NODES-1).GetHGID();
+    HGID D2 = MeshNode::FromIndex(MAX_NODES-2).GetHGID();
     route2.push_back(D2);
 
     // add route to gateway
-    HGID gateway = MeshNode::FromIndex(MAX_NODES).GetHGID();
+    HGID gateway = MeshNode::FromIndex(MAX_NODES-1).GetHGID();
     route1.push_back(gateway);
     route2.push_back(gateway);
     MeshNode::AddGateway(gateway);
@@ -269,8 +269,8 @@ void test1()
     cout << "----------------------------------------------" << endl << endl;
 
     // send a message from route 1 [A to D1], and receive delivery receipt
-    //payload = "Mr. Watson - come here - I want to see you.";
-    //TestRoute(A, D1, payload);
+    payload = "Mr. Watson - come here - I want to see you.";
+    TestRoute(A, D1, payload);
     cout << "----------------------------------------------" << endl << endl;
 
 
@@ -281,8 +281,8 @@ void test1()
     cout << "----------------------------------------------" << endl << endl;
 
     // send a message from reverse of route 1 [D2 to A], and receive delivery receipt
-    //payload = "The computer can be used as a tool to liberate and protect people, rather than to control them.";
-    //TestRoute(D2, A, payload);
+    payload = "The computer can be used as a tool to liberate and protect people, rather than to control them.";
+    TestRoute(D2, A, payload);
 }
 
 bool testBLS()
@@ -564,6 +564,7 @@ int sign(const secp256k1_context* ctx, unsigned char seckeys[][32], const secp25
     } else {
         return 1;
     }
+    return 0;
 }
 
 bool testMuSig()

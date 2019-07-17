@@ -30,3 +30,4 @@ src/*.o
 **/.DS_Store
 lot49
 lot49.log
+lot49_stats.csv
