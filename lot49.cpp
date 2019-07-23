@@ -10,6 +10,8 @@ extern "C" {
 #include <secp256k1_schnorrsig.h>
 #include <secp256k1_musig.h>
 }
+#include <array>
+#include <string>
 
 using namespace std;
 using namespace lot49;
@@ -17,7 +19,14 @@ using namespace lot49;
 // TODO: use  48 byte signatures, not 96 byte: https://twitter.com/sorgente711/status/1025451092610433024
 
 bool testBLS();
-bool testMuSig();
+bool testMuSig(bool);
+// Needed to use std::array over C-style arrays
+const size_t num_signers = 3;
+const size_t seckeysize = 32; 
+const size_t noncesize = 32; 
+const size_t hashsize = 32; 
+const size_t pubkeysize = 33; // always serialize keys in compressed form
+typedef std::basic_string<unsigned char> ustring;
 void test1();
 void test2();
 void test3();
@@ -35,7 +44,7 @@ int main(int argc, char* argv[])
 {
     cout << "testBLS():  " << (testBLS() ? "success!" : "failed!") << endl;
 
-    cout << "testMuSig():  " << (testMuSig() ? "success!" : "failed!") << endl;
+    cout << "testMuSig():  " << (testMuSig(true) ? "success!" : "failed!") << endl;
 
     // test with pre-defined paths
     test1();
@@ -442,32 +451,32 @@ bool testBLS()
 }
 
 /* Create a key with a seed; if seed is nullptr will generate a random key. */
-int create_key(const secp256k1_context* ctx, const uint8_t* seed, uint8_t* seckey, secp256k1_pubkey* pubkey)
+int create_key(const secp256k1_context* ctx, const std::array<uint8_t, 32> &seed, const bool nullseed, std::array<uint8_t, 32> &seckey, secp256k1_pubkey* pubkey)
 {
-    if (seed != nullptr) {
-        memcpy(seckey, seed, 32);
+    if (nullseed == false) {
+        memcpy(seckey.data(), seed.data(), 32);
     } else {
         ifstream urandom("/dev/urandom", ios::in|ios::binary);
         if (urandom) {
-            urandom.read(reinterpret_cast<char*>(seckey), 32);
+            urandom.read(reinterpret_cast<char*>(seckey.data()), 32);
             urandom.close();
         } else {
             urandom.close();
             return 0;
         }
     }
-    if (!secp256k1_ec_seckey_verify(ctx, seckey)) {
+    if (!secp256k1_ec_seckey_verify(ctx, seckey.data())) {
         return 0;
     } else {
-        return secp256k1_ec_pubkey_create(ctx, pubkey, seckey);
+        return secp256k1_ec_pubkey_create(ctx, pubkey, seckey.data());
     }
 }
 
 /* Sign a message hash with the given key pairs and store the result in sig */
-int sign(const secp256k1_context* ctx, unsigned char seckeys[][32], const secp256k1_pubkey* pubkeys, const unsigned char* msg32, secp256k1_schnorrsig *sig, size_t num_signers) {
+int sign(const secp256k1_context* ctx, std::array<std::array<uint8_t, seckeysize>, num_signers> seckeys, const secp256k1_pubkey* pubkeys, const std::basic_string<unsigned char> msg, secp256k1_schnorrsig *sig) {
     secp256k1_musig_session musig_session[num_signers];
-    uint8_t nonce_commitment[num_signers][32];
-    const uint8_t *nonce_commitment_ptr[num_signers];
+    std::array<std::array<uint8_t, noncesize>, num_signers> nonce_commitment;
+    std::array<uint8_t*, num_signers> nonce_commitment_ptr;
     secp256k1_musig_session_signer_data signer_data[num_signers][num_signers];
     secp256k1_pubkey nonce[num_signers];
     int i, j;
@@ -475,12 +484,12 @@ int sign(const secp256k1_context* ctx, unsigned char seckeys[][32], const secp25
     secp256k1_pubkey musig_pk;
 
     for (i = 0; i < num_signers; i++) {
-        uint8_t session_id32[32];
-        uint8_t pk_hash[32];
+        std::array<uint8_t, noncesize> session_id32;
+        std::array<uint8_t, hashsize> pk_hash;
         secp256k1_pubkey combined_pk;
 
         /* Create combined pubkey and initialize signer data */
-        if (!secp256k1_musig_pubkey_combine(ctx, nullptr, &combined_pk, pk_hash, pubkeys, num_signers)) {
+        if (!secp256k1_musig_pubkey_combine(ctx, nullptr, &combined_pk, pk_hash.data(), pubkeys, num_signers)) {
             return 0;
         }
 
@@ -492,7 +501,7 @@ int sign(const secp256k1_context* ctx, unsigned char seckeys[][32], const secp25
          * it's trivial for an attacker to extract the secret key! */
         ifstream urandom("/dev/urandom", ios::in|ios::binary);
         if (urandom) {
-            urandom.read(reinterpret_cast<char*>(session_id32), 32);
+            urandom.read(reinterpret_cast<char*>(session_id32.data()), 32);
             urandom.close();
         } else {
             urandom.close();
@@ -500,16 +509,16 @@ int sign(const secp256k1_context* ctx, unsigned char seckeys[][32], const secp25
         }
 
         /* Initialize session */
-        if (!secp256k1_musig_session_initialize(ctx, &musig_session[i], signer_data[i], nonce_commitment[i], session_id32, msg32, &combined_pk, pk_hash, num_signers, i, seckeys[i])) {
+        if (!secp256k1_musig_session_initialize(ctx, &musig_session[i], signer_data[i], nonce_commitment[i].data(), session_id32.data(), msg.data(), &combined_pk, pk_hash.data(), num_signers, i, seckeys[i].data())) {
             return 0;
         }
-        nonce_commitment_ptr[i] = &nonce_commitment[i][0];
+        nonce_commitment_ptr[i] = nonce_commitment[i].data();
     }
         
     /* Communication round 1: Exchange nonce commitments */
     for (i = 0; i < num_signers; i++) {
         /* Set nonce commitments in the signer data and get the own public nonce */
-        if (!secp256k1_musig_session_get_public_nonce(ctx, &musig_session[i], signer_data[i], &nonce[i], nonce_commitment_ptr, num_signers)) {
+        if (!secp256k1_musig_session_get_public_nonce(ctx, &musig_session[i], signer_data[i], &nonce[i], nonce_commitment_ptr.data(), num_signers)) {
             return 0;
         }
     }
@@ -542,7 +551,7 @@ int sign(const secp256k1_context* ctx, unsigned char seckeys[][32], const secp25
     }
 
     /* Produce & check group signature before the partials */
-    if (!secp256k1_schnorrsig_verify(ctx, sig, msg32, &musig_pk)) {
+    if (!secp256k1_schnorrsig_verify(ctx, sig, msg.data(), &musig_pk)) {
         for (i = 0; i < num_signers; i++) {
             for (j = 0; j < num_signers; j++) {
                 /* To check whether signing was successful, it suffices to either verify
@@ -567,40 +576,56 @@ int sign(const secp256k1_context* ctx, unsigned char seckeys[][32], const secp25
     return 0;
 }
 
-bool testMuSig()
+bool testMuSig(bool useseed)
 {
     // Example seed, used to generate private key. Always use
     // a secure RNG with sufficient entropy to generate a seed.
-    uint8_t seed[] = {0, 50, 6, 244, 24, 199, 1, 25, 52, 88, 192,
-                      19, 18, 12, 89, 6, 220, 18, 102, 58, 209,
-                      82, 12, 62, 89, 110, 182, 9, 44, 20, 254, 22};
+
+    std::array<uint8_t, 32> seed;
+    if (useseed) {
+        seed = {0, 50, 6, 244, 24, 199, 1, 25, 52, 88, 192, 19, 18, 12, 89, 6, 
+            220, 18, 102, 58, 209, 82, 12, 62, 89, 110, 182, 9, 44, 20, 254, 22};
+    } else {
+        seed.fill(255);
+    }
 
     secp256k1_context* ctx;
-    size_t num_signers = 3;
-    size_t pubkeysize = 33; // always serialize keys in compressed form
+    size_t serial_pubkeysize = pubkeysize;
     uint8_t i;
-    uint8_t seckeys[num_signers][32];
+    std::array<std::array<uint8_t, seckeysize>, num_signers> seckeys;
     secp256k1_pubkey pubkeys[num_signers];
-    uint8_t serialized_pubkeys[num_signers][33];
+    std::array<std::array<uint8_t, pubkeysize>, num_signers> serialized_pubkeys;
     secp256k1_pubkey combined_pk;
-    uint8_t msg[32] = "this_could_be_the_hash_of_a_msg";
+    const ustring msg(reinterpret_cast<const unsigned char*>("this_could_be_the_hash_of_a_msg"));
     secp256k1_schnorrsig sig;
+
+    bool nullseed = true;
+    for (uint8_t value : seed) {
+        if (value != 255) {
+            nullseed = false;
+            break;
+        }
+    }
 
     /* Create a context for signing and verification */
     ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
     cout << "Creating key pairs......" << endl;
     for (i = 0; i < num_signers; i++) {
-        if (!create_key(ctx, seed, seckeys[i], &pubkeys[i])) {
+        if (!create_key(ctx, seed, nullseed, seckeys[i], &pubkeys[i])) {
             cout << "keygen failed" << endl;
             return false;
         } else {
             cout << "sk" << i << ": " << std::hex;
             for ( uint8_t byte : seckeys[i] ) { cout << std::setw(2) << std::setfill('0') << static_cast<int>(byte); }
             cout << endl;
-            secp256k1_ec_pubkey_serialize(ctx, serialized_pubkeys[i], &pubkeysize, &pubkeys[i], SECP256K1_EC_COMPRESSED);
+            secp256k1_ec_pubkey_serialize(ctx, serialized_pubkeys[i].data(), &serial_pubkeysize, &pubkeys[i], SECP256K1_EC_COMPRESSED);
+            if (serial_pubkeysize != pubkeysize) {
+                cout << "pubkey serialization failed" << endl;
+                return false;
+            }
             cout << "pk" << i << ": " << std::hex;
             for ( uint8_t byte : serialized_pubkeys[i] ) { cout << std::setw(2) << std::setfill('0') << static_cast<int>(byte); }
-             cout << endl;
+            cout << endl;
             seed[0]++;
         }
     }
@@ -611,7 +636,7 @@ bool testMuSig()
     }
 
     cout << "Signing and verifying......" << endl;
-    if (!sign(ctx, seckeys, pubkeys, msg, &sig, num_signers)) {
+    if (!sign(ctx, seckeys, pubkeys, msg, &sig)) {
         cout << "signing or verifying failed" << endl;
         return false;
     }
