@@ -1,5 +1,12 @@
 
 #include "bls.hpp"
+extern "C" {
+#include <secp256k1.h>
+#include <secp256k1_schnorrsig.h>
+#include <secp256k1_musig.h>
+#include <hash.h>
+#include <util.h>
+}
 
 #pragma once
 
@@ -7,6 +14,21 @@ namespace lot49
 {
 // Hashed GID
 typedef uint16_t HGID;
+
+// add types related to secp256k1; always use compressed keys
+// pending change to only use even-signed keys would remove need for 33-byte type
+
+// Needed to use std::array over C-style arrays
+const size_t num_signers = 2;
+const size_t seckeysize = 32; 
+const size_t noncesize = 32; 
+const size_t hashsize = 32; 
+const size_t pubkeysize = 33; // always serialize keys in compressed form
+const size_t sigsize = 64; 
+typedef std::basic_string<unsigned char> ustring;
+typedef std::array<uint8_t, sigsize> secp256k1_64;
+typedef std::array<uint8_t, seckeysize> secp256k1_32;
+typedef std::array<uint8_t, pubkeysize> secp256k1_33;
 
 enum ETransactionType {
     eIssue,

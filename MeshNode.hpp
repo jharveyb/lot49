@@ -1,5 +1,11 @@
 #include "bls.hpp"
 #include "ImpliedTransaction.hpp"
+extern "C" {
+#include <secp256k1.h>
+#include <secp256k1_schnorrsig.h>
+#include <secp256k1_musig.h>
+#include <hash_impl.h>
+}
 
 #include <list>
 #include <memory>
@@ -92,6 +98,9 @@ struct MeshMessage
     // reconstruct from serialized data
     void FromBytes(const std::vector<uint8_t>& inData);
 };
+
+// compute SHA256 of a set of bytes using libsecp implementation
+void GetSHA256(uint8_t* output, const uint8_t* data, size_t len);
 
 class MeshNode
 {

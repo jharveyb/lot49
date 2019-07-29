@@ -20,13 +20,6 @@ using namespace lot49;
 
 bool testBLS();
 bool testMuSig(bool);
-// Needed to use std::array over C-style arrays
-const size_t num_signers = 3;
-const size_t seckeysize = 32; 
-const size_t noncesize = 32; 
-const size_t hashsize = 32; 
-const size_t pubkeysize = 33; // always serialize keys in compressed form
-typedef std::basic_string<unsigned char> ustring;
 void test1();
 void test2();
 void test3();
@@ -239,6 +232,11 @@ void test1()
 {
     const size_t MAX_NODES = 6; 
     MeshNode::CreateNodes(MAX_NODES);
+    // Need to issue tokens to each node; aggregate signatures not working rn
+    for (int i = 0; i < MAX_NODES; i++) {
+        bls::PublicKey pk = MeshNode::FromIndex(i).GetPublicKey();
+        Ledger::sInstance.Issue(pk, COMMITTED_TOKENS, MAX_NODES);
+    }
 
     // create linear route: A <-> B <-> C <-> D1
     MeshRoute route1;
@@ -473,7 +471,7 @@ int create_key(const secp256k1_context* ctx, const std::array<uint8_t, 32> &seed
 }
 
 /* Sign a message hash with the given key pairs and store the result in sig */
-int sign(const secp256k1_context* ctx, std::array<std::array<uint8_t, seckeysize>, num_signers> seckeys, const secp256k1_pubkey* pubkeys, const std::basic_string<unsigned char> msg, secp256k1_schnorrsig *sig) {
+int sign(const secp256k1_context* ctx, std::array<std::array<uint8_t, seckeysize>, num_signers> seckeys, const secp256k1_pubkey* pubkeys, const ustring msg, secp256k1_schnorrsig *sig) {
     secp256k1_musig_session musig_session[num_signers];
     std::array<std::array<uint8_t, noncesize>, num_signers> nonce_commitment;
     std::array<uint8_t*, num_signers> nonce_commitment_ptr;

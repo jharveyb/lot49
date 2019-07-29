@@ -103,7 +103,9 @@ void MeshNode::CreateNodes(const int inCount)
         n.SetCorrespondentNode(correspondent_node);
 
         // gateways evenly spaced in range
-        if ((i % (inCount/num_gateways)) == 0) {
+        if (num_gateways == 0) {
+            n.mIsGateway = false;
+        } else if ((i % (inCount/num_gateways)) == 0) {
             n.mIsGateway = true;
         }
 
@@ -364,6 +366,16 @@ const bls::PublicKey MeshNode::GetPublicKey() const
     return sk.GetPublicKey();
 }
 
+
+// compute SHA256 of a set of bytes using libsecp implementation
+void GetSHA256(uint8_t* output, const uint8_t* data, size_t len)
+{
+    secp256k1_sha256 hashstate;
+    secp256k1_sha256_initialize(&hashstate);
+    secp256k1_sha256_write(&hashstate, static_cast<const unsigned char*>(data), len);
+    secp256k1_sha256_finalize(&hashstate, static_cast<unsigned char*>(output));
+}
+
 // initiate a payment channel if one doesn't already exist with this neighbor
 void MeshNode::ProposeChannel(HGID inNeighbor)
 {
@@ -446,7 +458,7 @@ const PeerChannel& MeshNode::GetChannel(HGID inProposer, HGID inFunder) const
 void SavePayloadHash(PeerChannel& ioChannel, const std::vector<uint8_t>& inData)
 {
     ioChannel.mPayloadHash.resize(bls::BLS::MESSAGE_HASH_LEN, 0);
-    bls::Util::Hash256(&(ioChannel.mPayloadHash[0]), reinterpret_cast<const uint8_t*>(inData.data()), inData.size()); 
+    GetSHA256(&(ioChannel.mPayloadHash[0]), reinterpret_cast<const uint8_t*>(inData.data()), inData.size());
     _log << "\tSave payload hash(" << std::hex << ioChannel.mProposingPeer << ", " << ioChannel.mFundingPeer << "): [";
     for (int v: ioChannel.mPayloadHash) { _log << std::hex << v; }
     _log << "] ";
@@ -456,7 +468,7 @@ void SavePayloadHash(PeerChannel& ioChannel, const std::vector<uint8_t>& inData)
 void SaveWitnessHash(PeerChannel& ioChannel, const std::vector<uint8_t>& inData)
 {
     ioChannel.mWitnessHash.resize(bls::BLS::MESSAGE_HASH_LEN, 0);
-    bls::Util::Hash256(&(ioChannel.mWitnessHash[0]), reinterpret_cast<const uint8_t*>(inData.data()), inData.size()); 
+    GetSHA256(&(ioChannel.mWitnessHash[0]), reinterpret_cast<const uint8_t*>(inData.data()), inData.size());
     _log << "\tSave witness hash(" << std::hex << ioChannel.mProposingPeer << ", " << ioChannel.mFundingPeer << "): [";
     for (int v: ioChannel.mWitnessHash) { _log << std::hex << v; }
     _log << "] ";
@@ -1030,7 +1042,7 @@ std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inM
     }
     const MeshNode& first_relay = MeshNode::FromHGID(first_relay_hgid);
 
-    bls::Util::Hash256(&message_hash[0], reinterpret_cast<const uint8_t*>(inMessage.mPayloadData.data()), inMessage.mPayloadData.size());
+    GetSHA256(&message_hash[0], reinterpret_cast<const uint8_t*>(inMessage.mPayloadData.data()), inMessage.mPayloadData.size());
 
     // TODO: find a unique unspent output for this channel instead of using a default UTXO based on senders public key
     ImpliedTransaction issued_value_tx = ImpliedTransaction::Issue(source.GetPublicKey(), COMMITTED_TOKENS);
@@ -1174,7 +1186,7 @@ bls::Signature MeshNode::SignMessage(const std::vector<uint8_t>& inPayload) cons
     _log << "]" << endl;
 
     vector<uint8_t> thePayloadHash(bls::BLS::MESSAGE_HASH_LEN, 0);
-    bls::Util::Hash256(&thePayloadHash[0], reinterpret_cast<const uint8_t*>(inPayload.data()), inPayload.size());
+    GetSHA256(&thePayloadHash[0], reinterpret_cast<const uint8_t*>(inPayload.data()), inPayload.size());
 
     _log << "\tSigner: " << GetHGID() << " Type: sign_payload hash: [";
     for (int v: thePayloadHash) { _log << std::hex << v; }

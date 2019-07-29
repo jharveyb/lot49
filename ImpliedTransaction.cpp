@@ -183,7 +183,7 @@ bool ImpliedTransaction::operator<(const ImpliedTransaction& rval) const
 uint32_t ImpliedTransaction::GetId() const
 {
     std::vector<uint8_t> txhash = GetHash();
-    uint32_t txid = bls::Util::FourBytesToInt(&txhash[0]);
+    uint32_t txid = FourBytesToInt(txhash.data());
     return txid;    
 }
 
@@ -192,7 +192,7 @@ std::vector<uint8_t> ImpliedTransaction::GetHash() const
 {
     const std::vector<uint8_t> msg = Serialize();
     std::vector<uint8_t> message_hash(bls::BLS::MESSAGE_HASH_LEN);
-    bls::Util::Hash256(&message_hash[0], reinterpret_cast<const uint8_t*>(msg.data()), msg.size());
+    GetSHA256(&message_hash[0], reinterpret_cast<const uint8_t*>(msg.data()), msg.size());
     return message_hash;
 }
 
@@ -200,7 +200,7 @@ std::vector<uint8_t> ImpliedTransaction::GetHash() const
 uint32_t ImpliedTransaction::GetInputId() const
 {
     std::vector<uint8_t> txhash = GetInputHash();
-    uint32_t txid = bls::Util::FourBytesToInt(&txhash[0]);
+    uint32_t txid = FourBytesToInt(txhash.data());
     return txid;
 }
 
@@ -317,6 +317,17 @@ bls::PublicKey ImpliedTransaction::GetAggregateOutputOwner() const
         return bls::PublicKey::Aggregate(owners);
     }
     return bls::PublicKey::FromBytes(mOutputOwner1.data());
+}
+
+// Taken from BLS library
+uint32_t ImpliedTransaction::FourBytesToInt(const uint8_t* bytes) const
+{
+    uint32_t sum = 0;
+    for (size_t i = 0; i < 4; i++) {
+        uint32_t addend = bytes[i] << (8 * (3 - i));
+        sum += addend;
+    }
+    return sum;
 }
 
 }; // namespace lot49

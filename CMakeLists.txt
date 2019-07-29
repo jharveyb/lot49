@@ -15,6 +15,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/bls-signatures/build/contrib/relic/include
   ${CMAKE_CURRENT_SOURCE_DIR}/bls-signatures/contrib/catch  
   ${CMAKE_CURRENT_SOURCE_DIR}/secp256k1-zkp/.libs/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/zkp-hash
   )
 
 link_directories(

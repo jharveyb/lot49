@@ -132,6 +132,12 @@ To build:
     $ make -j $(nproc)
     $ make install
     $ cd ..
+    $ mkdir zkp-hash
+    $ cd zkp-hash
+    $ ln -s ../secp256k1-zkp/src/hash.h hash.h
+    $ ln -s ../secp256k1-zkp/src/hash_impl.h hash_impl.h
+    $ ln -s ../secp256k1-zkp/src/util.h util.h
+    $ cd ..
     $ mkdir build
     $ cd build
     $ cmake ../
