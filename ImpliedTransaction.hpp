@@ -105,6 +105,9 @@ class ImpliedTransaction {
     // get public key aggregated from all transaction output owner public keys
     bls::PublicKey GetAggregateOutputOwner() const;
 
+    // Taken from BLS library
+    uint32_t FourBytesToInt(const uint8_t* bytes) const;
+
     private:
 
     ETransactionType mType;
