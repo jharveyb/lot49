@@ -1,6 +1,5 @@
 
 #include "MeshNode.hpp"
-#include "Ledger.hpp"
 #include "Utils.hpp"
 #include <random>
 #include <algorithm>
@@ -642,18 +641,9 @@ bool MeshNode::VerifySetupTransaction(const MeshMessage& inMessage)
         return false;
     }
 
-    // check if the setup transaction has already been confirmed
+    // check transaction type
     assert(theTransactions[1].GetType() == eSetup);
-    bool valid_setup = Ledger::sInstance.Unspent(theTransactions[1].GetHash());
-    if (valid_setup) {
-        return true;
-    }
-
-    // otherwise, add the transation to the ledger and confirm it is confirmed
-    Ledger::sInstance.Add(theTransactions);
-    valid_setup = Ledger::sInstance.Unspent(theTransactions[1].GetHash());
-
-    return valid_setup;
+    return true;
 }
 
 // receive message
