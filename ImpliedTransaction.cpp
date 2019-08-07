@@ -153,7 +153,7 @@ ImpliedTransaction ImpliedTransaction::Close(const ImpliedTransaction& inInput, 
 // default ctor
 ImpliedTransaction::ImpliedTransaction()
 {
-    mInputTxHash.resize(bls::BLS::MESSAGE_HASH_LEN, 0);
+    mInputTxHash.resize(hashsize, 0);
     mType = eSetup;
     mInputOwner1.resize(bls::PublicKey::PUBLIC_KEY_SIZE, 0);
     mInputOwner2.resize(bls::PublicKey::PUBLIC_KEY_SIZE, 0);
@@ -164,7 +164,7 @@ ImpliedTransaction::ImpliedTransaction()
     mTimeDelay = 0;
     mChannelState = 0;
     mMessageSigner.resize(bls::PublicKey::PUBLIC_KEY_SIZE, 0);
-    mMessageHash.resize(bls::BLS::MESSAGE_HASH_LEN, 0);
+    mMessageHash.resize(hashsize, 0);
     // not part of serialization or transaction hash
     mTransactionSigner.resize(bls::PublicKey::PUBLIC_KEY_SIZE, 0);
 }
@@ -191,7 +191,7 @@ uint32_t ImpliedTransaction::GetId() const
 std::vector<uint8_t> ImpliedTransaction::GetHash() const
 {
     const std::vector<uint8_t> msg = Serialize();
-    std::vector<uint8_t> message_hash(bls::BLS::MESSAGE_HASH_LEN);
+    std::vector<uint8_t> message_hash(hashsize);
     GetSHA256(&message_hash[0], reinterpret_cast<const uint8_t*>(msg.data()), msg.size());
     return message_hash;
 }
@@ -213,8 +213,8 @@ std::vector<uint8_t> ImpliedTransaction::GetInputHash() const
 // compute serialization of the transaction
 std::vector<uint8_t> ImpliedTransaction::Serialize() const
 {
-    //std::vector<uint8_t> msg(bls::PublicKey::PUBLIC_KEY_SIZE*6 + bls::BLS::MESSAGE_HASH_LEN*2 + 7);
-    std::vector<uint8_t> msg(bls::PublicKey::PUBLIC_KEY_SIZE*5 + bls::BLS::MESSAGE_HASH_LEN + 7);
+    // mType is a byte + 4 pubkeys + 2 amounts (2 bytes) + 2 byte-sized fields + pubkey + hash
+    std::vector<uint8_t> msg(bls::PublicKey::PUBLIC_KEY_SIZE*5 + hashsize + 7);
     auto msg_ptr = msg.begin();
     //msg_ptr = std::copy(mInputTxHash.begin(), mInputTxHash.end(), msg_ptr);
     *msg_ptr++ = static_cast<uint8_t>(mType);

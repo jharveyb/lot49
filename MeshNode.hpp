@@ -8,7 +8,9 @@ extern "C" {
 }
 
 #include <list>
+#include <array>
 #include <memory>
+#include <fstream>
 
 #pragma once
 
@@ -122,6 +124,8 @@ class MeshNode
     // Lookup a node from a public key
     static MeshNode &FromPublicKey(const bls::PublicKey& inPk);
 
+    static MeshNode &FromMultisigPublicKey(const secp256k1_33& inPk);
+
     static void ClearRoutes();
 
     static HGID GetNextHop(HGID inNode, HGID inDestination, int& outHops);
@@ -145,8 +149,24 @@ class MeshNode
     // access private key
     const bls::PrivateKey GetPrivateKey() const;
 
+    // access or modify seed for the keypair used for multisig
+    const secp256k1_32 GetSeed() const;
+
+    // modify seed for multisig key; assume we want to redo keygen
+    void SetMultisigSeed(const secp256k1_32 new_seed);
+
+    // interact with system CSPRNG (/dev/urandom)
+    void ReadCSPRNG(char* outbuf, uint8_t readsize);
+
     // access public key
     const bls::PublicKey GetPublicKey() const;
+
+    const secp256k1_33 GetMultisigPublicKey();
+
+    // dummy public versions for testing
+    secp256k1_64 TestSignMultisigMessage(const std::vector<uint8_t>& inPayload);
+
+    bool TestVerifyMultisig(const secp256k1_33 pubkey, const secp256k1_64 sig, const secp256k1_32 msg32);
 
     // open a channel with neighbor node
     void ProposeChannel(HGID inNeighbor);
@@ -193,6 +213,12 @@ class MeshNode
     //
     bls::Signature GetAggregateSignature(const MeshMessage& inMessage, const bool isSigning) const;
 
+    // IMPLEMENT
+    secp256k1_64 GetPartialSignature(const MeshMessage& inMessage, const bool isSigning) const;
+
+    // IMPLEMENT - but also duplicate of SignMultisig*?
+    secp256k1_64 GetMultisigSignature(const MeshMessage& inMessage, const bool isSigning) const;
+
     // 
     static std::vector<ImpliedTransaction> GetTransactions(const MeshMessage& inMessage);
 
@@ -202,8 +228,14 @@ class MeshNode
     // 
     bls::Signature SignTransaction(const ImpliedTransaction& inTransaction) const;
 
+    secp256k1_64 SignMultisigTransaction(const ImpliedTransaction& inTransaction);
+
     // destination node signs payload 
     bls::Signature SignMessage(const std::vector<uint8_t>& inPayload) const;
+
+    secp256k1_64 SignMultisigMessage(const std::vector<uint8_t>& inPayload);
+
+    secp256k1_64 SignMultisig(const secp256k1_32 msg32);
 
     // transmit message
     void SendTransmission(const MeshMessage& inMessage);
@@ -213,6 +245,9 @@ class MeshNode
 
     // check that aggregate signature is valid
     bool VerifyMessage(const MeshMessage &inMessage) const;
+
+    // Check a secp256k1 signature
+    bool VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_64 sig, const secp256k1_32 msg32);
 
     // relay a message
     void RelayMessage(const MeshMessage& inMessage);
@@ -250,6 +285,27 @@ class MeshNode
 
     // used to create private key
     std::vector<uint8_t> mSeed;
+    secp256k1_32 secp_seed;
+
+    // CSPRNG & libsecp-specific objects we can use repeatedly
+    std::ifstream urandom;
+    std::string csprng_source = "/dev/urandom";
+
+    size_t serial_pubkeysize = pubkeysize;
+
+    // key material used for standard multisig
+    secp256k1_context* context_multisig;
+    secp256k1_context* context_serdes;
+    bool hasbtckey;
+    // TODO - cache keys so we don't clone secp contexts if key hasnt changed (?)
+    secp256k1_32 btc_sk;
+    secp256k1_33 btc_pk;
+
+    // key material used for MuSig
+    secp256k1_context* context_musig;
+    bool hasmusigkey;
+    secp256k1_32 musig_sk;
+    secp256k1_33 musig_pk;
 
     // gateway
     bool mIsGateway;

@@ -19,7 +19,7 @@ using namespace lot49;
 bool testMuSig(bool);
 void test1();
 void test2();
-void test3();
+bool testsecp();
 
 void TestRoute(HGID inSender, HGID inReceiver, std::string& inMessage)
 {
@@ -40,8 +40,129 @@ int main(int argc, char* argv[])
     // test randomly moving nodes
     //test2();
 
+    // test libsecp integration
+    cout << "test4(), libsecp:  " << (testsecp() ? "success!" : "failed!") << endl;
 };
 
+// test integration of libsecp for nodes
+bool testsecp()
+{
+    const size_t NODECOUNT = 2;
+    // seeds for secp keypairs
+    secp256k1_32 seed = {0, 50, 6, 244, 24, 199, 1, 25, 52, 88, 192, 19, 18, 12, 89, 6, 
+                    220, 18, 102, 58, 209, 82, 12, 62, 89, 110, 182, 9, 44, 20, 254, 22};
+
+    // save keys to compare deterministic vs random; static message for signing
+    std::array<secp256k1_33, NODECOUNT> pk_cache;
+    std::array<secp256k1_64, NODECOUNT> sig_cache;
+    const char raw_test_message[seckeysize] = "this_could_be_the_hash_of_a_msg";
+    std::vector<uint8_t> test_message;
+    secp256k1_32 clean_test_message;
+    test_message.resize(seckeysize);
+    memcpy(&test_message[0], &raw_test_message[0], seckeysize);
+    std::copy(test_message.begin(), test_message.end(), clean_test_message.begin());
+
+    // Use known good hash from GtkHash - convert to byte array for comparison
+    string knownhash = "e0fb2bdfd9c74844a977407025d310a691aeb39c80600e73051db0eb00ee9acf";
+    secp256k1_32 rawknownhash;
+    string bytebuf;
+    uint8_t rawbyte;
+    for (int i = 0; i < hashsize*2; i+=2) {
+        bytebuf = knownhash.substr(i, 2);
+        rawbyte = static_cast<uint8_t>(strtol(bytebuf.c_str(), NULL, 16));
+        rawknownhash[i/2] = rawbyte;
+    }
+
+    cout << endl;
+    MeshNode::CreateNodes(NODECOUNT);
+    // test keygen and node lookup based on pubkeys
+    for (int i = 0; i < NODECOUNT; i++) {
+        cout << "HGID - " << MeshNode::FromIndex(i).GetHGID() << endl;
+        cout << "Setting seed for multisig keypair..." << endl;
+        MeshNode::FromIndex(i).SetMultisigSeed(seed);
+        if (seed != MeshNode::FromIndex(i).GetSeed()) {
+            cout << "Seed not set or returned correctly!" << endl;
+            return false;
+        }
+        seed[0]++;
+        cout << "Keygen with deterministic seeds..." << endl;
+        pk_cache[i] = MeshNode::FromIndex(i).GetMultisigPublicKey();
+
+        // check that pubkey-based lookup works
+        HGID prev_node;
+        secp256k1_33 pk_prev_node;
+        if ((i % 2) == 1) {
+            prev_node = MeshNode::FromIndex(i-1).GetHGID();
+            pk_prev_node = MeshNode::FromIndex(i-1).GetMultisigPublicKey();
+            if (prev_node != MeshNode::FromMultisigPublicKey(pk_prev_node).GetHGID() ) {
+                cout << "Lookup via deterministic pubkey failed!" << endl;
+                return false;
+            }
+        }
+
+        // check keygen with randomness
+        cout << "Keygen with random seeds..." << endl;
+        seed.fill(255);
+        MeshNode::FromIndex(i).SetMultisigSeed(seed);
+        MeshNode::FromIndex(i).GetMultisigPublicKey();
+        // ideally check that "enough" bits are flipped
+        if (pk_cache[i] == MeshNode::FromIndex(i).GetMultisigPublicKey()) {
+            cout << "Random keygen same as deterministic!" << endl;
+            return false;
+        }
+        pk_cache[i] = MeshNode::FromIndex(i).GetMultisigPublicKey();
+        // must do this to reset caching of seed
+        MeshNode::FromIndex(i).SetMultisigSeed(seed);
+        MeshNode::FromIndex(i).GetMultisigPublicKey();
+        // compare against the first random key
+        if (pk_cache[i] == MeshNode::FromIndex(i).GetMultisigPublicKey()) {
+            cout << "Random keygen failed to be random!" << endl;
+            return false;
+        }
+    }
+
+    // test signing with message wrapper & verifying
+    for (int i = 0; i < NODECOUNT; i++) {
+        sig_cache[i] = MeshNode::FromIndex(i).TestSignMultisigMessage(test_message);
+        if (!MeshNode::FromIndex(i).TestVerifyMultisig(pk_cache[i], sig_cache[i], rawknownhash)) {
+            cout << "Verifying own signature failed!" << endl;
+            return false;
+        }
+        // tamper with signature, but reset for the next node
+        sig_cache[i][0]++;
+        if (MeshNode::FromIndex(i).TestVerifyMultisig(pk_cache[i], sig_cache[i], rawknownhash)) {
+            cout << "False positive on own modified signature!" << endl;
+            return false;
+        }
+        cout << "Successful verification of our own signature!" << endl;
+        sig_cache[i] = MeshNode::FromIndex(i).TestSignMultisigMessage(test_message);
+
+        // check signature of the previous node
+        if ((i % 2) == 1) {
+            if (sig_cache[i-1] == sig_cache[i]) {
+                cout << "Same signatures for different pubkeys!" << endl;
+                return false;
+            }
+            if (!MeshNode::FromMultisigPublicKey(pk_cache[i-1]).TestVerifyMultisig(pk_cache[i-1], sig_cache[i-1], rawknownhash)) {
+                cout << "Verifying on signature of another node failed!" << endl;
+                return false;
+            }
+        }
+        cout << "Successful verification of another node's signature!" << endl;
+    }
+
+    // test standalone functions
+    const ustring msg = {reinterpret_cast<const unsigned char*>(raw_test_message)};
+    secp256k1_32 hashout;
+    GetSHA256(hashout.data(), static_cast<const uint8_t*>(msg.data()), msg.size());
+    cout << "SHA256 of \"this_could_be_the_hash_of_a_msg\": ";
+    for ( uint8_t byte : hashout ) { cout << std::setw(2) << std::setfill('0') << static_cast<int>(byte); }
+    cout << endl;
+    if (hashout != rawknownhash) {
+        cout << "Hash does not match result from GtkHash!" << endl;
+        return false;
+    }
+    return true;
 }
 
 // test randomly moving nodes
@@ -264,11 +385,9 @@ bool testMuSig(bool useseed)
     // Example seed, used to generate private key. Always use
     // a secure RNG with sufficient entropy to generate a seed.
 
-    std::array<uint8_t, 32> seed;
-    if (useseed) {
-        seed = {0, 50, 6, 244, 24, 199, 1, 25, 52, 88, 192, 19, 18, 12, 89, 6, 
-            220, 18, 102, 58, 209, 82, 12, 62, 89, 110, 182, 9, 44, 20, 254, 22};
-    } else {
+    secp256k1_32 seed = {0, 50, 6, 244, 24, 199, 1, 25, 52, 88, 192, 19, 18, 12, 89, 6, 
+                    220, 18, 102, 58, 209, 82, 12, 62, 89, 110, 182, 9, 44, 20, 254, 22};
+    if (!useseed) {
         seed.fill(255);
     }
 
