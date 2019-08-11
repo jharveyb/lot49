@@ -83,6 +83,7 @@ bool testsecp()
         }
         seed[0]++;
         cout << "Keygen with deterministic seeds..." << endl;
+        MeshNode::FromIndex(i).NewMultisigPublicKey(false);
         pk_cache[i] = MeshNode::FromIndex(i).GetMultisigPublicKey();
 
         // check that pubkey-based lookup works
@@ -99,8 +100,7 @@ bool testsecp()
 
         // check keygen with randomness
         cout << "Keygen with random seeds..." << endl;
-        seed.fill(UINT8_MAX);
-        MeshNode::FromIndex(i).SetMultisigSeed(seed);
+        MeshNode::FromIndex(i).NewMultisigPublicKey(true);
         MeshNode::FromIndex(i).GetMultisigPublicKey();
         // ideally check that "enough" bits are flipped
         if (pk_cache[i] == MeshNode::FromIndex(i).GetMultisigPublicKey()) {
@@ -108,9 +108,7 @@ bool testsecp()
             return false;
         }
         pk_cache[i] = MeshNode::FromIndex(i).GetMultisigPublicKey();
-        // must do this to reset caching of seed
-        MeshNode::FromIndex(i).SetMultisigSeed(seed);
-        MeshNode::FromIndex(i).GetMultisigPublicKey();
+        MeshNode::FromIndex(i).NewMultisigPublicKey(true);
         // compare against the first random key
         if (pk_cache[i] == MeshNode::FromIndex(i).GetMultisigPublicKey()) {
             cout << "Random keygen failed to be random!" << endl;

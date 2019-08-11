@@ -158,7 +158,9 @@ class MeshNode
     // access public key
     const bls::PublicKey GetPublicKey() const;
 
-    const secp256k1_33 GetMultisigPublicKey();
+    const secp256k1_33 GetMultisigPublicKey() const;
+
+    void NewMultisigPublicKey(bool userandom);
 
     // dummy public versions for testing
     secp256k1_rsig TestSignMultisigMessage(const std::vector<uint8_t>& inPayload);
@@ -294,14 +296,11 @@ class MeshNode
     secp256k1_context* context_multisig_clean;
     secp256k1_context* context_multisig;
     secp256k1_context* context_serdes;
-    bool hasbtckey;
-    // TODO - cache keys so we don't clone secp contexts if key hasnt changed (?)
     secp256k1_32 btc_sk;
     secp256k1_33 btc_pk;
 
     // key material used for MuSig
     secp256k1_context* context_musig;
-    bool hasmusigkey;
     secp256k1_32 musig_sk;
     secp256k1_33 musig_pk;
 

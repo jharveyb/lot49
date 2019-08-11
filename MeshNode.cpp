@@ -382,34 +382,33 @@ const bls::PublicKey MeshNode::GetPublicKey() const
 
 // access serialized public key; generate & store keypair if we haven't already
 // initialize global context but then use local ones via cloning (destroy after)?
-const secp256k1_33 MeshNode::GetMultisigPublicKey()
+const secp256k1_33 MeshNode::GetMultisigPublicKey() const
 {
-    if (!hasbtckey) {
-        // secp contexts are paired with a key
-        context_multisig = secp256k1_context_clone(context_multisig_clean);
-        secp256k1_32 seckey;
-        secp256k1_pubkey pubkey;
-        bool nullseed = true;
-        nullseed = !(std::any_of(secp_seed.begin(), secp_seed.end(), [](const uint8_t byte) {return byte != UINT8_MAX;}));
-        if (!nullseed) {
-            memcpy(seckey.data(), secp_seed.data(), seckeysize);
-        } else {
-            ReadCSPRNG(reinterpret_cast<char*>(seckey.data()), seckeysize);
-        }
-        if (!secp256k1_ec_seckey_verify(context_multisig, seckey.data())) {
-            throw std::invalid_argument("Invalid multisig private key");
-        }
-        if (!secp256k1_ec_pubkey_create(context_multisig, &pubkey, seckey.data())) {
-            throw std::invalid_argument("Error deriving pubkey");
-        }
-        btc_sk = seckey;
-        secp256k1_ec_pubkey_serialize(context_multisig, btc_pk.data(), &serial_pubkeysize, &pubkey, SECP256K1_EC_COMPRESSED);
-        if (serial_pubkeysize != pubkeysize) {
-            throw std::invalid_argument("Error serializing pubkey");
-        }
-        hasbtckey = true;
-    }
     return btc_pk;
+}
+
+void MeshNode::NewMultisigPublicKey(bool userandom)
+{
+    // secp contexts are paired with a key
+    context_multisig = secp256k1_context_clone(context_multisig_clean);
+    secp256k1_32 seckey;
+    secp256k1_pubkey pubkey;
+    if (userandom) {
+        ReadCSPRNG(reinterpret_cast<char*>(seckey.data()), seckeysize);
+    } else {
+        memcpy(seckey.data(), secp_seed.data(), seckeysize);
+    }
+    if (!secp256k1_ec_seckey_verify(context_multisig, seckey.data())) {
+        throw std::invalid_argument("Invalid multisig private key");
+    }
+    if (!secp256k1_ec_pubkey_create(context_multisig, &pubkey, seckey.data())) {
+        throw std::invalid_argument("Error deriving pubkey");
+    }
+    btc_sk = seckey;
+    secp256k1_ec_pubkey_serialize(context_multisig, btc_pk.data(), &serial_pubkeysize, &pubkey, SECP256K1_EC_COMPRESSED);
+    if (serial_pubkeysize != pubkeysize) {
+        throw std::invalid_argument("Error serializing pubkey");
+    }
 }
 
 // access seed used for multisig key
@@ -424,7 +423,6 @@ const secp256k1_32 MeshNode::GetSeed() const
 void MeshNode::SetMultisigSeed(const secp256k1_32 new_seed)
 {
     std::copy(new_seed.begin(), new_seed.end(), secp_seed.begin());
-    hasbtckey = false;
 }
 
 // access CSPRNG stream
