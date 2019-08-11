@@ -3,11 +3,6 @@
 #include "Utils.hpp"
 #include <algorithm>
 #include <cassert>
-extern "C" {
-#include <secp256k1.h>
-#include <secp256k1_schnorrsig.h>
-#include <secp256k1_musig.h>
-}
 #include <array>
 #include <string>
 
@@ -54,7 +49,7 @@ bool testsecp()
 
     // save keys to compare deterministic vs random; static message for signing
     std::array<secp256k1_33, NODECOUNT> pk_cache;
-    std::array<secp256k1_64, NODECOUNT> sig_cache;
+    std::array<secp256k1_rsig, NODECOUNT> sig_cache;
     const char raw_test_message[seckeysize] = "this_could_be_the_hash_of_a_msg";
     std::vector<uint8_t> test_message;
     secp256k1_32 clean_test_message;
@@ -65,13 +60,14 @@ bool testsecp()
     // Use known good hash from GtkHash - convert to byte array for comparison
     string knownhash = "e0fb2bdfd9c74844a977407025d310a691aeb39c80600e73051db0eb00ee9acf";
     secp256k1_32 rawknownhash;
+    std::vector<uint8_t> vecknownhash;
     string bytebuf;
-    uint8_t rawbyte;
     for (int i = 0; i < hashsize*2; i+=2) {
         bytebuf = knownhash.substr(i, 2);
-        rawbyte = static_cast<uint8_t>(strtol(bytebuf.c_str(), NULL, 16));
-        rawknownhash[i/2] = rawbyte;
+        rawknownhash[i/2] = static_cast<uint8_t>(strtol(bytebuf.c_str(), nullptr, 16));
     }
+    vecknownhash.resize(32);
+    std::copy(rawknownhash.begin(), rawknownhash.end(), vecknownhash.begin());
 
     cout << endl;
     MeshNode::CreateNodes(NODECOUNT);
@@ -102,7 +98,7 @@ bool testsecp()
 
         // check keygen with randomness
         cout << "Keygen with random seeds..." << endl;
-        seed.fill(255);
+        seed.fill(UINT8_MAX);
         MeshNode::FromIndex(i).SetMultisigSeed(seed);
         MeshNode::FromIndex(i).GetMultisigPublicKey();
         // ideally check that "enough" bits are flipped
@@ -129,10 +125,10 @@ bool testsecp()
             return false;
         }
         // tamper with signature, but reset for the next node
-        sig_cache[i][0]++;
-        if (MeshNode::FromIndex(i).TestVerifyMultisig(pk_cache[i], sig_cache[i], rawknownhash)) {
-            cout << "False positive on own modified signature!" << endl;
-            return false;
+        if (sig_cache[i].rawsig[0] == UINT8_MAX) {
+            sig_cache[i].rawsig[0] = 0;
+        } else {
+            sig_cache[i].rawsig[0] = UINT8_MAX;
         }
         cout << "Successful verification of our own signature!" << endl;
         sig_cache[i] = MeshNode::FromIndex(i).TestSignMultisigMessage(test_message);
@@ -388,7 +384,7 @@ bool testMuSig(bool useseed)
     secp256k1_32 seed = {0, 50, 6, 244, 24, 199, 1, 25, 52, 88, 192, 19, 18, 12, 89, 6, 
                     220, 18, 102, 58, 209, 82, 12, 62, 89, 110, 182, 9, 44, 20, 254, 22};
     if (!useseed) {
-        seed.fill(255);
+        seed.fill(UINT8_MAX);
     }
 
     secp256k1_context* ctx;
@@ -402,12 +398,7 @@ bool testMuSig(bool useseed)
     secp256k1_schnorrsig sig;
 
     bool nullseed = true;
-    for (uint8_t value : seed) {
-        if (value != 255) {
-            nullseed = false;
-            break;
-        }
-    }
+    nullseed = !(std::any_of(seed.begin(), seed.end(), [](const uint8_t byte) {return byte != UINT8_MAX;}));
 
     /* Create a context for signing and verification */
     ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);

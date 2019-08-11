@@ -1,12 +1,5 @@
 #include "bls.hpp"
 #include "ImpliedTransaction.hpp"
-extern "C" {
-#include <secp256k1.h>
-#include <secp256k1_schnorrsig.h>
-#include <secp256k1_musig.h>
-#include <hash_impl.h>
-}
-
 #include <list>
 #include <array>
 #include <memory>
@@ -104,6 +97,10 @@ struct MeshMessage
 // compute SHA256 of a set of bytes using libsecp implementation
 void GetSHA256(uint8_t* output, const uint8_t* data, size_t len);
 
+void SavePayloadHash(PeerChannel& ioChannel, const std::vector<uint8_t>& inData);
+
+void SaveWitnessHash(PeerChannel& ioChannel, const std::vector<uint8_t>& inData);
+
 class MeshNode
 {
   public:
@@ -164,9 +161,9 @@ class MeshNode
     const secp256k1_33 GetMultisigPublicKey();
 
     // dummy public versions for testing
-    secp256k1_64 TestSignMultisigMessage(const std::vector<uint8_t>& inPayload);
+    secp256k1_rsig TestSignMultisigMessage(const std::vector<uint8_t>& inPayload);
 
-    bool TestVerifyMultisig(const secp256k1_33 pubkey, const secp256k1_64 sig, const secp256k1_32 msg32);
+    bool TestVerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32);
 
     // open a channel with neighbor node
     void ProposeChannel(HGID inNeighbor);
@@ -228,14 +225,14 @@ class MeshNode
     // 
     bls::Signature SignTransaction(const ImpliedTransaction& inTransaction) const;
 
-    secp256k1_64 SignMultisigTransaction(const ImpliedTransaction& inTransaction);
+    secp256k1_rsig SignMultisigTransaction(const ImpliedTransaction& inTransaction);
 
     // destination node signs payload 
     bls::Signature SignMessage(const std::vector<uint8_t>& inPayload) const;
 
-    secp256k1_64 SignMultisigMessage(const std::vector<uint8_t>& inPayload);
+    secp256k1_rsig SignMultisigMessage(const std::vector<uint8_t>& inPayload);
 
-    secp256k1_64 SignMultisig(const secp256k1_32 msg32);
+    secp256k1_rsig SignMultisig(const secp256k1_32 msg32);
 
     // transmit message
     void SendTransmission(const MeshMessage& inMessage);
@@ -247,7 +244,7 @@ class MeshNode
     bool VerifyMessage(const MeshMessage &inMessage) const;
 
     // Check a secp256k1 signature
-    bool VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_64 sig, const secp256k1_32 msg32);
+    bool VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32);
 
     // relay a message
     void RelayMessage(const MeshMessage& inMessage);
@@ -287,13 +284,14 @@ class MeshNode
     std::vector<uint8_t> mSeed;
     secp256k1_32 secp_seed;
 
-    // CSPRNG & libsecp-specific objects we can use repeatedly
+    // CSPRNG & libsecp-specific objects we can use repeatedly; using dev/urandom
     std::ifstream urandom;
-    std::string csprng_source = "/dev/urandom";
+    std::string csprng_source;
 
-    size_t serial_pubkeysize = pubkeysize;
+    size_t serial_pubkeysize;
 
-    // key material used for standard multisig
+    // key material used for standard multisig - pair contexts to keys, but clone instead of regenerating
+    secp256k1_context* context_multisig_clean;
     secp256k1_context* context_multisig;
     secp256k1_context* context_serdes;
     bool hasbtckey;

@@ -338,6 +338,9 @@ MeshNode::MeshNode()
     // DEBUG
     std::fill(mSeed.begin(), mSeed.end(), sSeed++);
     secp_seed.fill(sSeed++);
+    context_multisig_clean = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
+    csprng_source = "/dev/urandom";
+    serial_pubkeysize = pubkeysize;
     
     // if no pending channel node or correspondent set, then use same hgid as node
     mPendingChannelNode = GetHGID();
@@ -377,36 +380,30 @@ const bls::PublicKey MeshNode::GetPublicKey() const
     return sk.GetPublicKey();
 }
 
-// access serialized private key; generate & store keypair if we haven't already
+// access serialized public key; generate & store keypair if we haven't already
 // initialize global context but then use local ones via cloning (destroy after)?
 const secp256k1_33 MeshNode::GetMultisigPublicKey()
 {
     if (!hasbtckey) {
-        context_multisig = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
-        context_serdes = secp256k1_context_create(SECP256K1_CONTEXT_NONE);
-        secp256k1_context* fresh_multisig = secp256k1_context_clone(context_multisig);
+        // secp contexts are paired with a key
+        context_multisig = secp256k1_context_clone(context_multisig_clean);
         secp256k1_32 seckey;
         secp256k1_pubkey pubkey;
         bool nullseed = true;
-        for (uint8_t value : secp_seed) {
-            if (value != 255) {
-                nullseed = false;
-                break;
-            }
-        }
+        nullseed = !(std::any_of(secp_seed.begin(), secp_seed.end(), [](const uint8_t byte) {return byte != UINT8_MAX;}));
         if (!nullseed) {
             memcpy(seckey.data(), secp_seed.data(), seckeysize);
         } else {
             ReadCSPRNG(reinterpret_cast<char*>(seckey.data()), seckeysize);
         }
-        if (!secp256k1_ec_seckey_verify(fresh_multisig, seckey.data())) {
+        if (!secp256k1_ec_seckey_verify(context_multisig, seckey.data())) {
             throw std::invalid_argument("Invalid multisig private key");
         }
-        if (!secp256k1_ec_pubkey_create(fresh_multisig, &pubkey, seckey.data())) {
+        if (!secp256k1_ec_pubkey_create(context_multisig, &pubkey, seckey.data())) {
             throw std::invalid_argument("Error deriving pubkey");
         }
         btc_sk = seckey;
-        secp256k1_ec_pubkey_serialize(context_serdes, btc_pk.data(), &serial_pubkeysize, &pubkey, SECP256K1_EC_COMPRESSED);
+        secp256k1_ec_pubkey_serialize(context_multisig, btc_pk.data(), &serial_pubkeysize, &pubkey, SECP256K1_EC_COMPRESSED);
         if (serial_pubkeysize != pubkeysize) {
             throw std::invalid_argument("Error serializing pubkey");
         }
@@ -535,7 +532,7 @@ const PeerChannel& MeshNode::GetChannel(HGID inProposer, HGID inFunder) const
 void SavePayloadHash(PeerChannel& ioChannel, const std::vector<uint8_t>& inData)
 {
     ioChannel.mPayloadHash.resize(hashsize, 0);
-    GetSHA256(&(ioChannel.mPayloadHash[0]), reinterpret_cast<const uint8_t*>(inData.data()), inData.size());
+    GetSHA256(&(ioChannel.mPayloadHash[0]), inData.data(), inData.size());
     _log << "\tSave payload hash(" << std::hex << ioChannel.mProposingPeer << ", " << ioChannel.mFundingPeer << "): [";
     for (int v: ioChannel.mPayloadHash) { _log << std::hex << v; }
     _log << "] ";
@@ -545,7 +542,7 @@ void SavePayloadHash(PeerChannel& ioChannel, const std::vector<uint8_t>& inData)
 void SaveWitnessHash(PeerChannel& ioChannel, const std::vector<uint8_t>& inData)
 {
     ioChannel.mWitnessHash.resize(hashsize, 0);
-    GetSHA256(&(ioChannel.mWitnessHash[0]), reinterpret_cast<const uint8_t*>(inData.data()), inData.size());
+    GetSHA256(&(ioChannel.mWitnessHash[0]), inData.data(), inData.size());
     _log << "\tSave witness hash(" << std::hex << ioChannel.mProposingPeer << ", " << ioChannel.mFundingPeer << "): [";
     for (int v: ioChannel.mWitnessHash) { _log << std::hex << v; }
     _log << "] ";
@@ -1110,7 +1107,7 @@ std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inM
     }
     const MeshNode& first_relay = MeshNode::FromHGID(first_relay_hgid);
 
-    GetSHA256(&message_hash[0], reinterpret_cast<const uint8_t*>(inMessage.mPayloadData.data()), inMessage.mPayloadData.size());
+    GetSHA256(&message_hash[0], inMessage.mPayloadData.data(), inMessage.mPayloadData.size());
 
     // TODO: find a unique unspent output for this channel instead of using a default UTXO based on senders public key
     ImpliedTransaction issued_value_tx = ImpliedTransaction::Issue(source.GetPublicKey(), COMMITTED_TOKENS);
@@ -1240,7 +1237,7 @@ bls::Signature MeshNode::SignTransaction(const ImpliedTransaction& inTransaction
 }
 
 // use as wrapper for SignMultisig; log, calc. hash, and pass on
-secp256k1_64 MeshNode::SignMultisigTransaction(const ImpliedTransaction& inTransaction)
+secp256k1_rsig MeshNode::SignMultisigTransaction(const ImpliedTransaction& inTransaction)
 {
     std::vector<uint8_t> msg = inTransaction.Serialize();
     std::vector<uint8_t> msghash = inTransaction.GetHash();
@@ -1275,7 +1272,7 @@ bls::Signature MeshNode::SignMessage(const std::vector<uint8_t>& inPayload) cons
     _log << "]" << endl;
 
     vector<uint8_t> thePayloadHash(hashsize, 0);
-    GetSHA256(&thePayloadHash[0], reinterpret_cast<const uint8_t*>(inPayload.data()), inPayload.size());
+    GetSHA256(&thePayloadHash[0], inPayload.data(), inPayload.size());
 
     _log << "\tSigner: " << GetHGID() << " Type: sign_payload hash: [";
     for (int v: thePayloadHash) { _log << std::hex << v; }
@@ -1287,7 +1284,7 @@ bls::Signature MeshNode::SignMessage(const std::vector<uint8_t>& inPayload) cons
     return sig;
 }
 
-secp256k1_64 MeshNode::SignMultisigMessage(const std::vector<uint8_t>& inPayload)
+secp256k1_rsig MeshNode::SignMultisigMessage(const std::vector<uint8_t>& inPayload)
 {
     _log << "\tNode " << GetHGID() << ", SignMessage: size = " << std::dec << inPayload.size() << " [";
     for (int v: inPayload) {
@@ -1301,7 +1298,7 @@ secp256k1_64 MeshNode::SignMultisigMessage(const std::vector<uint8_t>& inPayload
     _log << "]" << endl;
 
     vector<uint8_t> thePayloadHash(hashsize, 0);
-    GetSHA256(thePayloadHash.data(), reinterpret_cast<const uint8_t*>(inPayload.data()), inPayload.size());
+    GetSHA256(thePayloadHash.data(), inPayload.data(), inPayload.size());
 
     _log << "\tSigner: " << GetHGID() << " Type: sign_payload hash: [";
     for (int v: thePayloadHash) { _log << std::hex << v; }
@@ -1314,21 +1311,20 @@ secp256k1_64 MeshNode::SignMultisigMessage(const std::vector<uint8_t>& inPayload
 }
 
 // Use recoverable signatures here?
-secp256k1_64 MeshNode::SignMultisig(const secp256k1_32 msg32)
+secp256k1_rsig MeshNode::SignMultisig(const secp256k1_32 msg32)
 {
-    secp256k1_context* fresh_multisig = secp256k1_context_clone(context_multisig);
-    secp256k1_ecdsa_signature newsigraw;
-    secp256k1_64 newsigcompact;
-    if (!secp256k1_ecdsa_sign(fresh_multisig, &newsigraw, msg32.data(), btc_sk.data(), NULL, NULL)) {
+    secp256k1_ecdsa_recoverable_signature newsigraw;
+    secp256k1_rsig newsigcompact;
+    if (!secp256k1_ecdsa_sign_recoverable(context_multisig, &newsigraw, msg32.data(), btc_sk.data(), nullptr, nullptr)) {
         throw std::invalid_argument("Error signing with multisig key");
     }
-    if (!secp256k1_ecdsa_signature_serialize_compact(context_serdes, newsigcompact.data(), &newsigraw)) {
+    if (!secp256k1_ecdsa_recoverable_signature_serialize_compact(context_multisig, newsigcompact.rawsig.data(), &newsigcompact.rid, &newsigraw)) {
         throw std::invalid_argument("Error serializing sig");
     }
     return newsigcompact;
 }
 
-secp256k1_64 MeshNode::TestSignMultisigMessage(const std::vector<uint8_t>& inPayload)
+secp256k1_rsig MeshNode::TestSignMultisigMessage(const std::vector<uint8_t>& inPayload)
 {
     return SignMultisigMessage(inPayload);
 }
@@ -1403,27 +1399,28 @@ bool MeshNode::VerifyMessage(const MeshMessage& inMessage) const
 }
 
 // Check a secp256k1 signature
-bool MeshNode::VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_64 sig, const secp256k1_32 msg32)
+bool MeshNode::VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32)
 {
-    secp256k1_context* fresh_multisig = secp256k1_context_clone(context_multisig);
     secp256k1_pubkey native_pk;
-    secp256k1_ecdsa_signature* native_sig;
-    if (!secp256k1_ec_pubkey_parse(context_serdes, &native_pk, pubkey.data(), pubkeysize)) {
+    secp256k1_ecdsa_recoverable_signature native_sig;
+    secp256k1_pubkey recovered_pk;
+    if (!secp256k1_ec_pubkey_parse(context_multisig, &native_pk, pubkey.data(), pubkeysize)) {
         throw std::invalid_argument("Error parsing multisig pubkey");
     }
-    if (!secp256k1_ecdsa_signature_parse_compact(context_serdes, native_sig, sig.data()) ){
+    if (!secp256k1_ecdsa_recoverable_signature_parse_compact(context_multisig, &native_sig, sig.rawsig.data(), sig.rid)){
         throw std::invalid_argument("Error parsing sig");
     }
-    if (!secp256k1_ecdsa_verify(fresh_multisig, native_sig, msg32.data(), &native_pk)) {
+    if (!secp256k1_ecdsa_recover(context_multisig, &recovered_pk, &native_sig, msg32.data())) {
         throw std::invalid_argument("Error verifying sig");
     }
     return true;
 }
 
-bool MeshNode::TestVerifyMultisig(const secp256k1_33 pubkey, const secp256k1_64 sig, const secp256k1_32 msg32)
+bool MeshNode::TestVerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32)
 {
     return VerifyMultisig(pubkey, sig, msg32);
 }
+
 bool MeshNode::GetNearestGateway(HGID& outGateway)
 {
     // node already a gateway?
@@ -1545,7 +1542,7 @@ void MeshMessage::FromBytes(const std::vector<uint8_t>& inData)
     mPayloadData.resize(payload_size);
     std::copy(&inData[offset], &inData[offset] + payload_size, &mPayloadData[0]);
     offset += payload_size;
-    assert(offset = inData.size());  
+    assert(offset == inData.size());
 }
 
 // reconstruct L49Header from serialized data
