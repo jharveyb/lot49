@@ -1240,20 +1240,19 @@ bls::Signature MeshNode::SignTransaction(const ImpliedTransaction& inTransaction
 secp256k1_rsig MeshNode::SignMultisigTransaction(const ImpliedTransaction& inTransaction)
 {
     std::vector<uint8_t> msg = inTransaction.Serialize();
-    std::vector<uint8_t> msghash = inTransaction.GetHash();
+    secp256k1_32 msg32;
+    std::copy(inTransaction.GetHash().begin(), inTransaction.GetHash().end(), msg32.begin());
     _log << "\tNode " << GetHGID() << ", ";
     _log << "\tSignTransaction, Tx Type: " << inTransaction.GetType() << " tx data: [";
     for (int v: msg) { _log << std::setfill('0') << setw(2) << std::hex << v; }
     _log << "]" << endl;
     _log << " tx hash: [";
-    for (int v: msghash) { _log << std::setfill('0') << setw(2) << std::hex << v; }
+    for (int v: msg32) { _log << std::setfill('0') << setw(2) << std::hex << v; }
     _log << "]" << endl;
     _log << "\t\tTx Signer PK: ";
     _log << inTransaction.GetSigner();
     _log << endl;
 
-    secp256k1_32 msg32;
-    std::copy(msghash.begin(), msghash.end(), msg32.begin());
     return SignMultisig(msg32);
 }
 
@@ -1297,20 +1296,17 @@ secp256k1_rsig MeshNode::SignMultisigMessage(const std::vector<uint8_t>& inPaylo
     }
     _log << "]" << endl;
 
-    vector<uint8_t> thePayloadHash(hashsize, 0);
-    GetSHA256(thePayloadHash.data(), inPayload.data(), inPayload.size());
+    secp256k1_32 msg32;
+    GetSHA256(msg32.data(), inPayload.data(), inPayload.size());
 
     _log << "\tSigner: " << GetHGID() << " Type: sign_payload hash: [";
-    for (int v: thePayloadHash) { _log << std::hex << v; }
+    for (int v: msg32) { _log << std::hex << v; }
     _log << "] ";
     _log << endl;
 
-    secp256k1_32 msg32;
-    std::copy(thePayloadHash.begin(), thePayloadHash.end(), msg32.begin());
     return SignMultisig(msg32);
 }
 
-// Use recoverable signatures here?
 secp256k1_rsig MeshNode::SignMultisig(const secp256k1_32 msg32)
 {
     secp256k1_ecdsa_recoverable_signature newsigraw;
@@ -1399,7 +1395,7 @@ bool MeshNode::VerifyMessage(const MeshMessage& inMessage) const
 }
 
 // Check a secp256k1 signature
-bool MeshNode::VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32)
+bool MeshNode::VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32, secp256k1_33 recpubkey)
 {
     secp256k1_pubkey native_pk;
     secp256k1_ecdsa_recoverable_signature native_sig;
@@ -1413,12 +1409,15 @@ bool MeshNode::VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& s
     if (!secp256k1_ecdsa_recover(context_multisig, &recovered_pk, &native_sig, msg32.data())) {
         throw std::invalid_argument("Error verifying sig");
     }
+    if (!secp256k1_ec_pubkey_serialize(context_multisig, recpubkey.data(), &serial_pubkeysize, &recovered_pk, SECP256K1_EC_COMPRESSED)) {
+        throw std::invalid_argument("Error serializing recovered pubkey");
+    }
     return true;
 }
 
-bool MeshNode::TestVerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32)
+bool MeshNode::TestVerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32, secp256k1_33 recpubkey)
 {
-    return VerifyMultisig(pubkey, sig, msg32);
+    return VerifyMultisig(pubkey, sig, msg32, recpubkey);
 }
 
 bool MeshNode::GetNearestGateway(HGID& outGateway)

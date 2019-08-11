@@ -49,6 +49,7 @@ bool testsecp()
 
     // save keys to compare deterministic vs random; static message for signing
     std::array<secp256k1_33, NODECOUNT> pk_cache;
+    std::array<secp256k1_33, NODECOUNT> rpk_cache;
     std::array<secp256k1_rsig, NODECOUNT> sig_cache;
     const char raw_test_message[seckeysize] = "this_could_be_the_hash_of_a_msg";
     std::vector<uint8_t> test_message;
@@ -120,15 +121,35 @@ bool testsecp()
     // test signing with message wrapper & verifying
     for (int i = 0; i < NODECOUNT; i++) {
         sig_cache[i] = MeshNode::FromIndex(i).TestSignMultisigMessage(test_message);
-        if (!MeshNode::FromIndex(i).TestVerifyMultisig(pk_cache[i], sig_cache[i], rawknownhash)) {
+        if (!MeshNode::FromIndex(i).TestVerifyMultisig(pk_cache[i], sig_cache[i], rawknownhash, rpk_cache[i])) {
             cout << "Verifying own signature failed!" << endl;
             return false;
         }
-        // tamper with signature, but reset for the next node
+        // tamper with signature; reset later for the next node
         if (sig_cache[i].rawsig[0] == UINT8_MAX) {
             sig_cache[i].rawsig[0] = 0;
         } else {
             sig_cache[i].rawsig[0] = UINT8_MAX;
+        }
+        if (sig_cache[i].rid == 3) {
+            sig_cache[i].rid = 0;
+        } else {
+            sig_cache[i].rid++;
+        }
+
+        // tampering detected via either verification failure (exception) or mismatched pubkeys (can't always check this way in practice)
+        try {
+            if (MeshNode::FromIndex(i).TestVerifyMultisig(pk_cache[i], sig_cache[i], rawknownhash, rpk_cache[i])) {
+                if (rpk_cache[i] == pk_cache[i]) {
+                    cout << "False positive on own modified signature!" << endl;
+                    return false;
+                } else {
+                    cout << "Detected modified signature via recovered pubkey!" << endl;
+                }
+            }
+        }
+        catch (exception& e) {
+            cout << "Detected modified signature!" << endl;
         }
         cout << "Successful verification of our own signature!" << endl;
         sig_cache[i] = MeshNode::FromIndex(i).TestSignMultisigMessage(test_message);
@@ -139,12 +160,15 @@ bool testsecp()
                 cout << "Same signatures for different pubkeys!" << endl;
                 return false;
             }
-            if (!MeshNode::FromMultisigPublicKey(pk_cache[i-1]).TestVerifyMultisig(pk_cache[i-1], sig_cache[i-1], rawknownhash)) {
+            if (!MeshNode::FromMultisigPublicKey(pk_cache[i-1]).TestVerifyMultisig(pk_cache[i-1], sig_cache[i-1], rawknownhash, rpk_cache[i])) {
                 cout << "Verifying on signature of another node failed!" << endl;
                 return false;
+            } else if (rpk_cache[i] != pk_cache[i-1]) {
+                cout << "Recovering pubkey of another node failed!" << endl;
+                return false;
             }
+            cout << "Successful verification of another node's signature!" << endl;
         }
-        cout << "Successful verification of another node's signature!" << endl;
     }
 
     // test standalone functions

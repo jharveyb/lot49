@@ -163,7 +163,7 @@ class MeshNode
     // dummy public versions for testing
     secp256k1_rsig TestSignMultisigMessage(const std::vector<uint8_t>& inPayload);
 
-    bool TestVerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32);
+    bool TestVerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32, secp256k1_33 recpubkey);
 
     // open a channel with neighbor node
     void ProposeChannel(HGID inNeighbor);
@@ -244,7 +244,7 @@ class MeshNode
     bool VerifyMessage(const MeshMessage &inMessage) const;
 
     // Check a secp256k1 signature
-    bool VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32);
+    bool VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32, secp256k1_33 recpubkey);
 
     // relay a message
     void RelayMessage(const MeshMessage& inMessage);
