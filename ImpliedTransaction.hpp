@@ -26,27 +26,11 @@ const size_t seckeysize = 32;
 const size_t noncesize = 32; 
 const size_t hashsize = 32; 
 const size_t pubkeysize = 33; // always serialize keys in compressed form
-const size_t sigsize = 65; 
+const size_t sigsize = 64;
 typedef std::basic_string<unsigned char> ustring;
 typedef std::array<uint8_t, seckeysize> secp256k1_32;
 typedef std::array<uint8_t, pubkeysize> secp256k1_33;
-// use recoverable sigs + support equality checking & copy
-struct secp256k1_rsig {
-    std::array<uint8_t, sigsize-1> rawsig;
-    int rid;
-
-    const bool operator==(const secp256k1_rsig& osig)
-    {
-        return (rawsig == osig.rawsig) && (rid == osig.rid);
-    };
-
-    secp256k1_rsig& operator=(const secp256k1_rsig& osig)
-    {
-        rawsig = osig.rawsig;
-        rid = osig.rid;
-        return *this;
-    };
-};
+typedef std::array<uint8_t, sigsize> secp256k1_64;
 
 enum ETransactionType {
     eIssue,

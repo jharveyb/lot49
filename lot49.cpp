@@ -48,27 +48,25 @@ bool testsecp()
                     220, 18, 102, 58, 209, 82, 12, 62, 89, 110, 182, 9, 44, 20, 254, 22};
 
     // save keys to compare deterministic vs random; static message for signing
-    std::array<secp256k1_33, NODECOUNT> pk_cache;
-    std::array<secp256k1_33, NODECOUNT> rpk_cache;
-    std::array<secp256k1_rsig, NODECOUNT> sig_cache;
+    std::array<secp256k1_33, NODECOUNT> pk_cache{};
+    std::array<secp256k1_64, NODECOUNT> sig_cache{};
     const char raw_test_message[seckeysize] = "this_could_be_the_hash_of_a_msg";
-    std::vector<uint8_t> test_message;
-    secp256k1_32 clean_test_message;
-    test_message.resize(seckeysize);
-    memcpy(&test_message[0], &raw_test_message[0], seckeysize);
-    std::copy(test_message.begin(), test_message.end(), clean_test_message.begin());
+    std::vector<uint8_t> vec_test_message{};
+    secp256k1_32 array_test_message{};
+    memcpy(array_test_message.data(), &raw_test_message[0], seckeysize);
+    vec_test_message.resize(seckeysize);
+    memcpy(vec_test_message.data(), &raw_test_message[0], seckeysize);
 
-    // Use known good hash from GtkHash - convert to byte array for comparison
-    string knownhash = "e0fb2bdfd9c74844a977407025d310a691aeb39c80600e73051db0eb00ee9acf";
-    secp256k1_32 rawknownhash;
-    std::vector<uint8_t> vecknownhash;
-    string bytebuf;
+    // Known hash when include the terminating null byte (normal usage)
+    string knownhash = "7667b1c4e47d8cb2e9c5b6d5ac39168a3eedfd958bf394375ed26af478b884";
+    // Use known good hash from GtkHash (no terminating null byte) - convert to byte array for comparison, testing SHA256
+    string gtkknownhash = "e0fb2bdfd9c74844a977407025d310a691aeb39c80600e73051db0eb00ee9acf";
+    secp256k1_32 rawgtkknownhash{};
+    string bytebuf{};
     for (int i = 0; i < hashsize*2; i+=2) {
-        bytebuf = knownhash.substr(i, 2);
-        rawknownhash[i/2] = static_cast<uint8_t>(strtol(bytebuf.c_str(), nullptr, 16));
+        bytebuf = gtkknownhash.substr(i, 2);
+        rawgtkknownhash[i/2] = static_cast<uint8_t>(strtoul(bytebuf.c_str(), 0, 16));
     }
-    vecknownhash.resize(32);
-    std::copy(rawknownhash.begin(), rawknownhash.end(), vecknownhash.begin());
 
     cout << endl;
     MeshNode::CreateNodes(NODECOUNT);
@@ -92,7 +90,7 @@ bool testsecp()
         if ((i % 2) == 1) {
             prev_node = MeshNode::FromIndex(i-1).GetHGID();
             pk_prev_node = MeshNode::FromIndex(i-1).GetMultisigPublicKey();
-            if (prev_node != MeshNode::FromMultisigPublicKey(pk_prev_node).GetHGID() ) {
+            if (prev_node != MeshNode::FromMultisigPublicKey(pk_prev_node).GetHGID()) {
                 cout << "Lookup via deterministic pubkey failed!" << endl;
                 return false;
             }
@@ -114,43 +112,34 @@ bool testsecp()
             cout << "Random keygen failed to be random!" << endl;
             return false;
         }
+        pk_cache[i] = MeshNode::FromIndex(i).GetMultisigPublicKey();
     }
 
     // test signing with message wrapper & verifying
+    secp256k1_32 signinghash;
+    GetSHA256(signinghash.data(), array_test_message.data(), array_test_message.size());
     for (int i = 0; i < NODECOUNT; i++) {
-        sig_cache[i] = MeshNode::FromIndex(i).TestSignMultisigMessage(test_message);
-        if (!MeshNode::FromIndex(i).TestVerifyMultisig(pk_cache[i], sig_cache[i], rawknownhash, rpk_cache[i])) {
+        sig_cache[i] = MeshNode::FromIndex(i).TestSignMultisigMessage(vec_test_message);
+        if (!MeshNode::FromIndex(i).TestVerifyMultisig(pk_cache[i], sig_cache[i], signinghash)) {
             cout << "Verifying own signature failed!" << endl;
             return false;
         }
         // tamper with signature; reset later for the next node
-        if (sig_cache[i].rawsig[0] == UINT8_MAX) {
-            sig_cache[i].rawsig[0] = 0;
+        if (sig_cache[i][0] == UINT8_MAX) {
+            sig_cache[i][0] = 0;
         } else {
-            sig_cache[i].rawsig[0] = UINT8_MAX;
-        }
-        if (sig_cache[i].rid == 3) {
-            sig_cache[i].rid = 0;
-        } else {
-            sig_cache[i].rid++;
+            sig_cache[i][0] = UINT8_MAX;
         }
 
         // tampering detected via either verification failure (exception) or mismatched pubkeys (can't always check this way in practice)
         try {
-            if (MeshNode::FromIndex(i).TestVerifyMultisig(pk_cache[i], sig_cache[i], rawknownhash, rpk_cache[i])) {
-                if (rpk_cache[i] == pk_cache[i]) {
-                    cout << "False positive on own modified signature!" << endl;
-                    return false;
-                } else {
-                    cout << "Detected modified signature via recovered pubkey!" << endl;
-                }
-            }
+            MeshNode::FromIndex(i).TestVerifyMultisig(pk_cache[i], sig_cache[i], signinghash);
         }
         catch (exception& e) {
             cout << "Detected modified signature!" << endl;
         }
         cout << "Successful verification of our own signature!" << endl;
-        sig_cache[i] = MeshNode::FromIndex(i).TestSignMultisigMessage(test_message);
+        sig_cache[i] = MeshNode::FromIndex(i).TestSignMultisigMessage(vec_test_message);
 
         // check signature of the previous node
         if ((i % 2) == 1) {
@@ -158,11 +147,8 @@ bool testsecp()
                 cout << "Same signatures for different pubkeys!" << endl;
                 return false;
             }
-            if (!MeshNode::FromMultisigPublicKey(pk_cache[i-1]).TestVerifyMultisig(pk_cache[i-1], sig_cache[i-1], rawknownhash, rpk_cache[i])) {
+            if (!MeshNode::FromMultisigPublicKey(pk_cache[i-1]).TestVerifyMultisig(pk_cache[i-1], sig_cache[i-1], signinghash)) {
                 cout << "Verifying on signature of another node failed!" << endl;
-                return false;
-            } else if (rpk_cache[i] != pk_cache[i-1]) {
-                cout << "Recovering pubkey of another node failed!" << endl;
                 return false;
             }
             cout << "Successful verification of another node's signature!" << endl;
@@ -172,11 +158,11 @@ bool testsecp()
     // test standalone functions
     const ustring msg = {reinterpret_cast<const unsigned char*>(raw_test_message)};
     secp256k1_32 hashout;
-    GetSHA256(hashout.data(), static_cast<const uint8_t*>(msg.data()), msg.size());
+    GetSHA256(hashout.data(), msg.data(), msg.size());
     cout << "SHA256 of \"this_could_be_the_hash_of_a_msg\": ";
     for ( uint8_t byte : hashout ) { cout << std::setw(2) << std::setfill('0') << static_cast<int>(byte); }
     cout << endl;
-    if (hashout != rawknownhash) {
+    if (hashout != rawgtkknownhash) {
         cout << "Hash does not match result from GtkHash!" << endl;
         return false;
     }

@@ -1235,7 +1235,7 @@ bls::Signature MeshNode::SignTransaction(const ImpliedTransaction& inTransaction
 }
 
 // use as wrapper for SignMultisig; log, calc. hash, and pass on
-secp256k1_rsig MeshNode::SignMultisigTransaction(const ImpliedTransaction& inTransaction)
+secp256k1_64 MeshNode::SignMultisigTransaction(const ImpliedTransaction& inTransaction)
 {
     std::vector<uint8_t> msg = inTransaction.Serialize();
     secp256k1_32 msg32;
@@ -1281,7 +1281,7 @@ bls::Signature MeshNode::SignMessage(const std::vector<uint8_t>& inPayload) cons
     return sig;
 }
 
-secp256k1_rsig MeshNode::SignMultisigMessage(const std::vector<uint8_t>& inPayload)
+secp256k1_64 MeshNode::SignMultisigMessage(const std::vector<uint8_t>& inPayload)
 {
     _log << "\tNode " << GetHGID() << ", SignMessage: size = " << std::dec << inPayload.size() << " [";
     for (int v: inPayload) {
@@ -1305,20 +1305,23 @@ secp256k1_rsig MeshNode::SignMultisigMessage(const std::vector<uint8_t>& inPaylo
     return SignMultisig(msg32);
 }
 
-secp256k1_rsig MeshNode::SignMultisig(const secp256k1_32 msg32)
+secp256k1_64 MeshNode::SignMultisig(const secp256k1_32 msg32)
 {
-    secp256k1_ecdsa_recoverable_signature newsigraw;
-    secp256k1_rsig newsigcompact;
-    if (!secp256k1_ecdsa_sign_recoverable(context_multisig, &newsigraw, msg32.data(), btc_sk.data(), nullptr, nullptr)) {
+    secp256k1_ecdsa_signature newsigraw;
+    secp256k1_64 newsigcompact;
+    if (!secp256k1_ecdsa_sign(context_multisig, &newsigraw, msg32.data(), btc_sk.data(), NULL, NULL)) {
         throw std::invalid_argument("Error signing with multisig key");
     }
-    if (!secp256k1_ecdsa_recoverable_signature_serialize_compact(context_multisig, newsigcompact.rawsig.data(), &newsigcompact.rid, &newsigraw)) {
+    if (!secp256k1_ecdsa_signature_serialize_compact(context_multisig, newsigcompact.data(), &newsigraw)) {
         throw std::invalid_argument("Error serializing sig");
+    }
+    if (!VerifyMultisig(btc_pk, newsigcompact, msg32)) {
+        throw std::invalid_argument("Error double-checking sig");
     }
     return newsigcompact;
 }
 
-secp256k1_rsig MeshNode::TestSignMultisigMessage(const std::vector<uint8_t>& inPayload)
+secp256k1_64 MeshNode::TestSignMultisigMessage(const std::vector<uint8_t>& inPayload)
 {
     return SignMultisigMessage(inPayload);
 }
@@ -1393,29 +1396,28 @@ bool MeshNode::VerifyMessage(const MeshMessage& inMessage) const
 }
 
 // Check a secp256k1 signature
-bool MeshNode::VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32, secp256k1_33 recpubkey)
+bool MeshNode::VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_64 sig, const secp256k1_32 msg32)
 {
     secp256k1_pubkey native_pk;
-    secp256k1_ecdsa_recoverable_signature native_sig;
-    secp256k1_pubkey recovered_pk;
+    secp256k1_ecdsa_signature native_sig;
     if (!secp256k1_ec_pubkey_parse(context_multisig, &native_pk, pubkey.data(), pubkeysize)) {
         throw std::invalid_argument("Error parsing multisig pubkey");
     }
-    if (!secp256k1_ecdsa_recoverable_signature_parse_compact(context_multisig, &native_sig, sig.rawsig.data(), sig.rid)){
+    if (pubkeysize != serial_pubkeysize) {
+        throw std::invalid_argument("Length error parsing multisig pubkey");
+    }
+    if (!secp256k1_ecdsa_signature_parse_compact(context_multisig, &native_sig, sig.data())){
         throw std::invalid_argument("Error parsing sig");
     }
-    if (!secp256k1_ecdsa_recover(context_multisig, &recovered_pk, &native_sig, msg32.data())) {
+    if (!secp256k1_ecdsa_verify(context_multisig, &native_sig, msg32.data(), &native_pk)) {
         throw std::invalid_argument("Error verifying sig");
-    }
-    if (!secp256k1_ec_pubkey_serialize(context_multisig, recpubkey.data(), &serial_pubkeysize, &recovered_pk, SECP256K1_EC_COMPRESSED)) {
-        throw std::invalid_argument("Error serializing recovered pubkey");
     }
     return true;
 }
 
-bool MeshNode::TestVerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32, secp256k1_33 recpubkey)
+bool MeshNode::TestVerifyMultisig(const secp256k1_33 pubkey, const secp256k1_64 sig, const secp256k1_32 msg32)
 {
-    return VerifyMultisig(pubkey, sig, msg32, recpubkey);
+    return VerifyMultisig(pubkey, sig, msg32);
 }
 
 bool MeshNode::GetNearestGateway(HGID& outGateway)

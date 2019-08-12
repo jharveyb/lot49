@@ -163,9 +163,9 @@ class MeshNode
     void NewMultisigPublicKey(bool userandom);
 
     // dummy public versions for testing
-    secp256k1_rsig TestSignMultisigMessage(const std::vector<uint8_t>& inPayload);
+    secp256k1_64 TestSignMultisigMessage(const std::vector<uint8_t>& inPayload);
 
-    bool TestVerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32, secp256k1_33 recpubkey);
+    bool TestVerifyMultisig(const secp256k1_33 pubkey, const secp256k1_64 sig, const secp256k1_32 msg32);
 
     // open a channel with neighbor node
     void ProposeChannel(HGID inNeighbor);
@@ -227,14 +227,14 @@ class MeshNode
     // 
     bls::Signature SignTransaction(const ImpliedTransaction& inTransaction) const;
 
-    secp256k1_rsig SignMultisigTransaction(const ImpliedTransaction& inTransaction);
+    secp256k1_64 SignMultisigTransaction(const ImpliedTransaction& inTransaction);
 
     // destination node signs payload 
     bls::Signature SignMessage(const std::vector<uint8_t>& inPayload) const;
 
-    secp256k1_rsig SignMultisigMessage(const std::vector<uint8_t>& inPayload);
+    secp256k1_64 SignMultisigMessage(const std::vector<uint8_t>& inPayload);
 
-    secp256k1_rsig SignMultisig(const secp256k1_32 msg32);
+    secp256k1_64 SignMultisig(const secp256k1_32 msg32);
 
     // transmit message
     void SendTransmission(const MeshMessage& inMessage);
@@ -246,7 +246,7 @@ class MeshNode
     bool VerifyMessage(const MeshMessage &inMessage) const;
 
     // Check a secp256k1 signature
-    bool VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_rsig& sig, const secp256k1_32 msg32, secp256k1_33 recpubkey);
+    bool VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_64 sig, const secp256k1_32 msg32);
 
     // relay a message
     void RelayMessage(const MeshMessage& inMessage);
