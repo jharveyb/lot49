@@ -1315,9 +1315,6 @@ secp256k1_64 MeshNode::SignMultisig(const secp256k1_32 msg32)
     if (!secp256k1_ecdsa_signature_serialize_compact(context_multisig, newsigcompact.data(), &newsigraw)) {
         throw std::invalid_argument("Error serializing sig");
     }
-    if (!VerifyMultisig(btc_pk, newsigcompact, msg32)) {
-        throw std::invalid_argument("Error double-checking sig");
-    }
     return newsigcompact;
 }
 

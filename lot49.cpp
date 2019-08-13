@@ -61,12 +61,9 @@ bool testsecp()
     string knownhash = "7667b1c4e47d8cb2e9c5b6d5ac39168a3eedfd958bf394375ed26af478b884";
     // Use known good hash from GtkHash (no terminating null byte) - convert to byte array for comparison, testing SHA256
     string gtkknownhash = "e0fb2bdfd9c74844a977407025d310a691aeb39c80600e73051db0eb00ee9acf";
+    std::vector<uint8_t> convert_knownhash = HexToBytes(gtkknownhash);
     secp256k1_32 rawgtkknownhash{};
-    string bytebuf{};
-    for (int i = 0; i < hashsize*2; i+=2) {
-        bytebuf = gtkknownhash.substr(i, 2);
-        rawgtkknownhash[i/2] = static_cast<uint8_t>(strtoul(bytebuf.c_str(), 0, 16));
-    }
+    std::copy(convert_knownhash.begin(), convert_knownhash.end(), rawgtkknownhash.begin());
 
     cout << endl;
     MeshNode::CreateNodes(NODECOUNT);
