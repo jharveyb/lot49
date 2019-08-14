@@ -359,11 +359,19 @@ MeshNode::MeshNode()
     mPausedUntil = 0;
 }
 
+// limit of 2^16 unique devices in once mesh - may want to add prefix for region / support more devices
+void MeshNode::NewHGID()
+{
+    secp256k1_32 hashbuf;
+    GetSHA256(btc_pk.data(), btc_pk.data(), seckeysize);
+    hgid = (hashbuf[0] << 8) + hashbuf[1];
+}
+
+
 // secp256k1 tag
 HGID MeshNode::GetHGID() const
 {
-    // TODO: use hash of public key, not first two seed values
-    return *reinterpret_cast<const uint16_t *>(mSeed.data());
+    return hgid;
 }
 
 // access private key
@@ -393,6 +401,8 @@ void MeshNode::NewMultisigPublicKey(bool userandom)
     context_multisig = secp256k1_context_clone(context_multisig_clean);
     secp256k1_32 seckey;
     secp256k1_pubkey pubkey;
+    // using this keypair for node identification
+    NewHGID();
     if (userandom) {
         ReadCSPRNG(reinterpret_cast<char*>(seckey.data()), seckeysize);
     } else {

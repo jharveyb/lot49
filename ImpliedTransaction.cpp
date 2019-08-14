@@ -192,7 +192,7 @@ std::vector<uint8_t> ImpliedTransaction::GetHash() const
 {
     const std::vector<uint8_t> msg = Serialize();
     std::vector<uint8_t> message_hash(hashsize);
-    GetSHA256(&message_hash[0], reinterpret_cast<const uint8_t*>(msg.data()), msg.size());
+    GetSHA256(message_hash.data(), msg.data(), msg.size());
     return message_hash;
 }
 

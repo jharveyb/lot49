@@ -141,6 +141,8 @@ class MeshNode
 
     MeshNode();
 
+    void NewHGID();
+
     HGID GetHGID() const;
 
     // access private key
@@ -289,6 +291,7 @@ class MeshNode
     // CSPRNG & libsecp-specific objects we can use repeatedly; using dev/urandom
     std::ifstream urandom;
     std::string csprng_source;
+    uint16_t hgid;
 
     size_t serial_pubkeysize;
 
