@@ -15,6 +15,19 @@ namespace lot49
 // create implied transactions
 //
 
+void ReadCSPRNG(const std::string source, char* outbuf, uint8_t readsize)
+{
+    std::ifstream urandom;
+    urandom.open(source, std::ios::in | std::ios::binary);
+    if (urandom.is_open()) {
+        urandom.read(outbuf, readsize);
+        urandom.close();
+    } else {
+        urandom.close();
+        throw std::invalid_argument("Error with /dev/urandom");
+    }
+}
+
 void ClearVector(std::vector<uint8_t>& outPubkey)
 {
     std::fill(outPubkey.begin(), outPubkey.end(), 0);

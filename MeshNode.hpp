@@ -154,9 +154,6 @@ class MeshNode
     // modify seed for multisig key; assume we want to redo keygen
     void SetMultisigSeed(const secp256k1_32 new_seed);
 
-    // interact with system CSPRNG (/dev/urandom)
-    void ReadCSPRNG(char* outbuf, uint8_t readsize);
-
     // access public key
     const bls::PublicKey GetPublicKey() const;
 
@@ -289,7 +286,6 @@ class MeshNode
     secp256k1_32 secp_seed;
 
     // CSPRNG & libsecp-specific objects we can use repeatedly; using dev/urandom
-    std::ifstream urandom;
     std::string csprng_source;
     uint16_t hgid;
 

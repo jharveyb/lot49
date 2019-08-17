@@ -404,7 +404,7 @@ void MeshNode::NewMultisigPublicKey(bool userandom)
     // using this keypair for node identification
     NewHGID();
     if (userandom) {
-        ReadCSPRNG(reinterpret_cast<char*>(seckey.data()), seckeysize);
+        ReadCSPRNG(csprng_source, reinterpret_cast<char*>(seckey.data()), seckeysize);
     } else {
         memcpy(seckey.data(), secp_seed.data(), seckeysize);
     }
@@ -433,19 +433,6 @@ const secp256k1_32 MeshNode::GetSeed() const
 void MeshNode::SetMultisigSeed(const secp256k1_32 new_seed)
 {
     std::copy(new_seed.begin(), new_seed.end(), secp_seed.begin());
-}
-
-// access CSPRNG stream
-void MeshNode::ReadCSPRNG(char* outbuf, uint8_t readsize)
-{
-    urandom.open(csprng_source, std::ios::in | std::ios::binary);
-    if (urandom.is_open()) {
-        urandom.read(outbuf, readsize);
-        urandom.close();
-    } else {
-        urandom.close();
-        throw std::invalid_argument("Error with /dev/urandom");
-    }
 }
 
 // compute SHA256 of a set of bytes using libsecp implementation

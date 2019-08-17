@@ -32,6 +32,8 @@ typedef std::array<uint8_t, seckeysize> secp256k1_32;
 typedef std::array<uint8_t, pubkeysize> secp256k1_33;
 typedef std::array<uint8_t, sigsize> secp256k1_64;
 
+void ReadCSPRNG(const std::string source, char* outbuf, uint8_t readsize);
+
 enum ETransactionType {
     eIssue,
     eTransfer,
