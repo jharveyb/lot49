@@ -67,10 +67,15 @@ std::ostream &operator<<(std::ostream &out, const MeshNode &n)
     out << "\tGateway: " << (n.mIsGateway ? "true" : "false") << std::endl;
     out << "\tCorrespondent: " << n.mCorrespondent;
     out << " (distance = " << Distance(n.mCurrentPos, MeshNode::FromHGID(n.mCorrespondent).mCurrentPos) << ")" << std::endl;
-    out << "\tPublic Key: " << n.GetPublicKey() << std::endl;
+    out << "\tPublic Key: ";
+    secp256k1_33 npk = n.GetMultisigPublicKey();
+    for (auto byte : npk ) {
+        out << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
+    }
+    out << std::endl; 
     out << "\tSeed: ";
     out << std::hex;
-    for (auto byte : n.mSeed ) {
+    for (auto byte : n.secp_seed ) {
         out << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
     } 
     return out;
