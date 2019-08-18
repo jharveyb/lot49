@@ -85,13 +85,13 @@ class ImpliedTransaction {
     uint32_t GetId() const;
 
     // compute hash of this transaction
-    std::vector<uint8_t> GetHash() const;
+    secp256k1_32 GetHash() const;
 
     // get short transaction ID of input transaction
     uint32_t GetInputId() const;
 
     // get hash of input transaction
-    std::vector<uint8_t> GetInputHash() const;
+    secp256k1_32 GetInputHash() const;
 
     // compute serialization of the transaction
     std::vector<uint8_t> Serialize() const;
@@ -139,7 +139,7 @@ class ImpliedTransaction {
 
     ETransactionType mType;
     // TODO: input transaction hash should correctly point to specific tx or be empty if this tx is signed with NOINPUT signature flag
-    std::vector<uint8_t> mInputTxHash; 
+    secp256k1_32 mInputTxHash; 
     // TODO: public keys should be generated from an extended public key + nonce
     secp256k1_33 mInputOwner1;
     secp256k1_33 mInputOwner2;

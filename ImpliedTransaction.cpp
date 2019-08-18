@@ -1,4 +1,3 @@
-#include "bls.hpp"
 #include "MeshNode.hpp"
 #include "ImpliedTransaction.hpp"
 #include <random>
@@ -64,7 +63,7 @@ ImpliedTransaction ImpliedTransaction::MultisigIssue(const secp256k1_33& inRecei
     tx.mType = eIssue;
 
     // Issuing coins with a random keypair (outside of MeshNode)
-    secp256k1_context* context_temporary = secp256k1_context_create(SECP256K1_CONTEXT_SIGN || SECP256K1_CONTEXT_VERIFY);
+    secp256k1_context* context_temporary = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
     secp256k1_32 seckey;
     secp256k1_pubkey pubkey;
     secp256k1_33 serial_pk;
@@ -289,7 +288,7 @@ ImpliedTransaction ImpliedTransaction::MultisigClose(const ImpliedTransaction& i
 // default ctor
 ImpliedTransaction::ImpliedTransaction()
 {
-    mInputTxHash.resize(hashsize, 0);
+    mInputTxHash.fill(0);
     mType = eSetup;
     /*
     mInputOwner1.resize(bls::PublicKey::PUBLIC_KEY_SIZE, 0);
@@ -330,16 +329,16 @@ bool ImpliedTransaction::operator<(const ImpliedTransaction& rval) const
 // get short transaction ID
 uint32_t ImpliedTransaction::GetId() const
 {
-    std::vector<uint8_t> txhash = GetHash();
+    secp256k1_32 txhash = GetHash();
     uint32_t txid = FourBytesToInt(txhash.data());
     return txid;    
 }
 
 // compute hash of this transaction
-std::vector<uint8_t> ImpliedTransaction::GetHash() const
+secp256k1_32 ImpliedTransaction::GetHash() const
 {
     const std::vector<uint8_t> msg = Serialize();
-    std::vector<uint8_t> message_hash(hashsize);
+    secp256k1_32 message_hash;
     GetSHA256(message_hash.data(), msg.data(), msg.size());
     return message_hash;
 }
@@ -347,13 +346,12 @@ std::vector<uint8_t> ImpliedTransaction::GetHash() const
 // get short transaction ID of input transaction
 uint32_t ImpliedTransaction::GetInputId() const
 {
-    std::vector<uint8_t> txhash = GetInputHash();
-    uint32_t txid = FourBytesToInt(txhash.data());
+    uint32_t txid = FourBytesToInt(GetInputHash().data());
     return txid;
 }
 
 // get hash of input transaction
-std::vector<uint8_t> ImpliedTransaction::GetInputHash() const
+secp256k1_32 ImpliedTransaction::GetInputHash() const
 {
     return mInputTxHash;
 }
@@ -418,7 +416,7 @@ bool ImpliedTransaction::AddSigner(const bls::PublicKey& inSigner)
 */
 bool ImpliedTransaction::AddMultisigSigner(const secp256k1_33& inSigner) 
 {
-    // record aggregate public key for two transaction signers; aggregate public keys in order (eg. first, second)
+    // record public key for second transaction signer; add public keys in order (eg. first, second)
     const secp256k1_33 signer = GetMultisigSigner();
     secp256k1_33 input_owner0 = GetMultisigInputOwner(0);
     secp256k1_33 input_owner1 = GetMultisigInputOwner(1);
