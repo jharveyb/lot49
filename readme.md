@@ -118,13 +118,6 @@ Note that secp256k1-zkp/include/secp256k1_musig.h:272:75 should be changed from 
 To build:
 
     $ git submodule update --init --recursive
-    $ cd bls-signatures
-    $ mkdir build
-    $ cd build
-    $ git checkout "f114ffe"
-    $ cmake ../
-    $ cmake --build . -- -j $(nproc)
-    $ cd ../..
     $ cd secp256k1-zkp
     $ git checkout "11af701"
     $ ./autogen.sh
