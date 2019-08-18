@@ -86,11 +86,11 @@ std::ostream &operator<<(std::ostream &out, const L49Header &i)
     out << "Incentive, Type: " << i.mType << " Prepaid Tokens: " << (int) i.mPrepaidTokens  << (i.mWitness ? " (Witness) " : "-") << std::endl;
     out << "\tRelay Path: [";
     out << std::hex;
-    for (auto  byte : i.mRelayPath) {
-        out << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
-    } 
+    for (auto  byte : i.mRelayPath) { out << std::setw(2) << std::setfill('0') << static_cast<int>(byte); } 
     out << "]" <<  std::endl;
-    out << "\tSignature: " << bls::Signature::FromBytes(i.mSignature.data()) << std::endl;
+    out << "\tSignature: "; 
+    for (auto  byte : i.mSignature) { out << std::setw(2) << std::setfill('0') << static_cast<int>(byte); } 
+    out << std::endl;
     /*
     out << "\tSignature: ";
     out << std::hex;
@@ -132,6 +132,24 @@ std::ofstream& LOG() {
         sLogfile.open(filename);
     }
     return sLogfile;
+}
+
+std::ostream &operator<<(std::ostream &out, const secp256k1_32 &secp32)
+{
+    for (int byte: secp32) { out << std::setfill('0') << std::setw(2) << std::hex << byte; }
+    return out;
+}
+
+std::ostream &operator<<(std::ostream &out, const secp256k1_33 &secp33)
+{
+    for (int byte: secp33) { out << std::setfill('0') << std::setw(2) << std::hex << byte; }
+    return out;
+}
+
+std::ostream &operator<<(std::ostream &out, const secp256k1_64 &secp64)
+{
+    for (int byte: secp64) { out << std::setfill('0') << std::setw(2) << std::hex << byte; }
+    return out;
 }
 
 std::ofstream sStatsfile;
