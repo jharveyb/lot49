@@ -4,6 +4,7 @@
 #include <memory>
 #include <fstream>
 #include <unordered_map>
+#include <map>
 #include <deque>
 
 #pragma once
@@ -144,8 +145,6 @@ class MeshNode
     static MeshNode &FromHGID(const HGID &inHGID);
 
     // Lookup a node from a public key
-    static MeshNode &FromPublicKey(const bls::PublicKey& inPk);
-
     static MeshNode &FromMultisigPublicKey(const secp256k1_33& inPk);
 
     static void ClearRoutes();
@@ -171,8 +170,6 @@ class MeshNode
     HGID GetHGID() const;
 
     // access private key
-    const bls::PrivateKey GetPrivateKey() const;
-
     // access or modify seed for the keypair used for multisig
     const secp256k1_32 GetSeed() const;
 
@@ -180,8 +177,6 @@ class MeshNode
     void SetMultisigSeed(const secp256k1_32 new_seed);
 
     // access public key
-    const bls::PublicKey GetPublicKey() const;
-
     const secp256k1_33 GetMultisigPublicKey() const;
 
     void NewMultisigPublicKey(bool userandom);
@@ -234,8 +229,6 @@ class MeshNode
     const PeerChannel& GetChannel(HGID inProposer, HGID inFunder) const;
 
     //
-    bls::Signature GetAggregateSignature(const MeshMessage& inMessage, const bool isSigning) const;
-
     std::array<secp256k1_64, 2> UpdateMultisigSignatures(const MeshMessage& inMessage, const bool isSigning);
     // 
     static std::vector<ImpliedTransaction> GetTransactions(const MeshMessage& inMessage);
@@ -244,13 +237,9 @@ class MeshNode
     void UpdateIncentiveHeader(MeshMessage& ioMessage);
 
     // 
-    bls::Signature SignTransaction(const ImpliedTransaction& inTransaction) const;
-
     secp256k1_64 SignMultisigTransaction(const ImpliedTransaction& inTransaction);
 
     // destination node signs payload 
-    bls::Signature SignMessage(const std::vector<uint8_t>& inPayload) const;
-
     secp256k1_64 SignMultisigMessage(const std::vector<uint8_t>& inPayload);
 
     secp256k1_64 SignMultisig(const secp256k1_32 msg32);

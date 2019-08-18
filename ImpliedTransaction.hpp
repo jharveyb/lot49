@@ -1,14 +1,15 @@
 
-#include "bls.hpp"
-extern "C" {
 #include <secp256k1.h>
 #include <secp256k1_recovery.h>
 #include <secp256k1_schnorrsig.h>
+extern "C" {
 #include <secp256k1_musig.h>
 #include <hash.h>
 #include <util.h>
 #include <hash_impl.h>
 }
+#include <array>
+#include <vector>
 
 #pragma once
 
@@ -47,30 +48,17 @@ class ImpliedTransaction {
     public:
 
     // create implied transactions
-    static ImpliedTransaction Issue(const bls::PublicKey& inReceiver, const uint16_t inFundingAmount);
     static ImpliedTransaction MultisigIssue(const secp256k1_33& inReceiver, const uint16_t inFundingAmount);
-    static ImpliedTransaction Issue(const bls::PublicKey& inSender, const bls::PublicKey& inReceiver, const uint16_t inFundingAmount);
     static ImpliedTransaction MultisigIssue(const secp256k1_33& inSender, const secp256k1_33& inReceiver, const uint16_t inFundingAmount);
-    static ImpliedTransaction Transfer(const ImpliedTransaction& inInput, const bls::PublicKey& inSource, const bls::PublicKey& inReceiver, 
-        const uint16_t inFundingAmount);
     static ImpliedTransaction MultisigTransfer(const ImpliedTransaction& inInput, const secp256k1_33& inSource, const secp256k1_33& inReceiver,
-        const uint16_t inFundingAmount);
-    static ImpliedTransaction Setup(const ImpliedTransaction& inInput, const bls::PublicKey& inSource, const bls::PublicKey& inReceiver, 
         const uint16_t inFundingAmount);
     static ImpliedTransaction MultisigSetup(const ImpliedTransaction& inInput, const secp256k1_33& inSource, const secp256k1_33& inReceiver,
         const uint16_t inFundingAmount);
-    static ImpliedTransaction Refund(const ImpliedTransaction& inInput, const bls::PublicKey& inSource, const bls::PublicKey& inReceiver, 
-        const bls::PublicKey& inSigner, const uint16_t inRefundAmount);
     static ImpliedTransaction MultisigRefund(const ImpliedTransaction& inInput, const secp256k1_33& inSender, const secp256k1_33& inReceiver,
         const secp256k1_33& inSigner, const uint16_t inRefundAmount);
-    static ImpliedTransaction UpdateAndSettle(const ImpliedTransaction& inInput, const bls::PublicKey& inSender, const bls::PublicKey& inReceiver, 
-        const bls::PublicKey& inSigner, const uint16_t inSenderAmount, const uint16_t inReceiverAmount, const bls::PublicKey& inDestination, 
-        const std::vector<uint8_t>& inMessageHash);
     static ImpliedTransaction MultisigUpdateAndSettle(const ImpliedTransaction& inInput, const secp256k1_33& inSender, const secp256k1_33& inReceiver,
         const secp256k1_33& inSigner, const uint16_t inSenderAmount, const uint16_t inReceiverAmount, const secp256k1_33& inDestination,
         const std::vector<uint8_t>& inMessageHash);
-    static ImpliedTransaction Close(const ImpliedTransaction& inInput, const bls::PublicKey& inSender, const bls::PublicKey& inReceiver, 
-        const bls::PublicKey& inSigner, const uint16_t inSenderAmount, const uint16_t inReceiverAmount);
     static ImpliedTransaction MultisigClose(const ImpliedTransaction& inInput, const secp256k1_33& inSender, const secp256k1_33& inReceiver,
         const secp256k1_33& inSigner, const uint16_t inSenderAmount, const uint16_t inReceiverAmount);
 
@@ -99,21 +87,15 @@ class ImpliedTransaction {
     ETransactionType GetType() const { return mType; }
 
     // public key of the transaction signer
-    const bls::PublicKey GetSigner() const;
-
     const secp256k1_33 GetMultisigSigner() const;
 
     // aggregate public key of signer with public key of other signer
-    bool AddSigner(const bls::PublicKey& inSigner);
-
     bool AddMultisigSigner(const secp256k1_33& inSigner);
 
     // return true if transaction output must be signed by public keys of two owners
     bool IsMultisig() const;
 
     // get public key of output owner 0 or 1
-    bls::PublicKey GetOutputOwner(const int index) const;
-
     secp256k1_33 GetMultisigOutputOwner(const int index) const;
 
     // get total output amount
@@ -123,13 +105,9 @@ class ImpliedTransaction {
     uint16_t GetOutputAmount(const int index) const;
 
     // get public key of input owner 0 or 1
-    bls::PublicKey GetInputOwner(const int index) const;
-
     secp256k1_33 GetMultisigInputOwner(const int index) const;
 
     // get public key aggregated from all transaction output owner public keys
-    bls::PublicKey GetAggregateOutputOwner() const;
-
     secp256k1_33 GetMusigOwner() const;
 
     // Taken from BLS library

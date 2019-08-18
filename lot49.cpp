@@ -5,6 +5,7 @@
 #include <cassert>
 #include <array>
 #include <string>
+#include <sstream>
 
 using namespace std;
 using namespace lot49;

@@ -26,35 +26,12 @@ void ReadCSPRNG(const std::string &source, char* outbuf, uint8_t readsize)
         throw std::invalid_argument("Error with /dev/urandom");
     }
 }
-/*
-void SetPublicKey(std::vector<uint8_t>& outPubkey, const bls::PublicKey& inSource)
-{
-    inSource.Serialize(&outPubkey[0]);
-}
-*/
+
 void SetMultisigPublicKey(secp256k1_33& outPubkey, const secp256k1_33& inSource)
 {
     std::copy(inSource.begin(), inSource.end(), outPubkey.begin());
 }
-/*
-ImpliedTransaction ImpliedTransaction::Issue(const bls::PublicKey& inReceiver, const uint16_t inFundingAmount)
-{
-    // cout << "Make Issue Tx" << endl;
-    // issue 1:1 stored value UTXO from no previous UTXO, equivalent to mining reward (ie. no input tx)
-    ImpliedTransaction tx;
-    tx.mType = eIssue;
 
-    std::vector<uint8_t> seed(bls::PrivateKey::PRIVATE_KEY_SIZE);
-    std::generate_n(seed.begin(), bls::PrivateKey::PRIVATE_KEY_SIZE, [&] { return dist(rng); });
-    bls::PrivateKey sk = bls::PrivateKey::FromSeed(seed.data(), seed.size());
-
-    SetPublicKey(tx.mInputOwner1, sk.GetPublicKey());
-    SetPublicKey(tx.mOutputOwner1, inReceiver);
-    tx.mOutputAmount1 = inFundingAmount;
-    SetPublicKey(tx.mTransactionSigner, inReceiver);
-    return tx;    
-}
-*/
 ImpliedTransaction ImpliedTransaction::MultisigIssue(const secp256k1_33& inReceiver, const uint16_t inFundingAmount)
 {
     // cout << "Make Issue Tx" << endl;
@@ -87,28 +64,7 @@ ImpliedTransaction ImpliedTransaction::MultisigIssue(const secp256k1_33& inRecei
     secp256k1_context_destroy(context_temporary);
     return tx;    
 }
-/*
-ImpliedTransaction ImpliedTransaction::Transfer(const ImpliedTransaction& inInput, const bls::PublicKey& inSender, const bls::PublicKey& inReceiver, const uint16_t inFundingAmount)
-{
-    //cout << "Make Transfer Tx" << endl;
-    // transfer value to 1:1 UTXO from previous 1:1 UTXO
-    ImpliedTransaction tx;
-    tx.mInputTxHash = inInput.GetHash();
-    tx.mType = eTransfer;
-    SetPublicKey(tx.mInputOwner1, inSender);
-    ClearVector(tx.mInputOwner2);
-    SetPublicKey(tx.mOutputOwner1, inReceiver);
-    ClearVector(tx.mOutputOwner2);
-    tx.mOutputAmount1 = inFundingAmount;
-    tx.mOutputAmount2 = 0;
-    tx.mTimeDelay = 0;
-    tx.mChannelState = 0;
-    ClearVector(tx.mMessageSigner);
-    ClearVector(tx.mMessageHash);
-    SetPublicKey(tx.mTransactionSigner, inSender);
-    return tx;
-}
-*/
+
 ImpliedTransaction ImpliedTransaction::MultisigTransfer(const ImpliedTransaction& inInput, const secp256k1_33& inSender, const secp256k1_33& inReceiver, const uint16_t inFundingAmount)
 {
     //cout << "Make Transfer Tx" << endl;
@@ -127,28 +83,6 @@ ImpliedTransaction ImpliedTransaction::MultisigTransfer(const ImpliedTransaction
     SetMultisigPublicKey(tx.mTransactionSigner, inSender);
     return tx;
 }
-/*
-ImpliedTransaction ImpliedTransaction::Setup(const ImpliedTransaction& inInput, const bls::PublicKey& inSender, const bls::PublicKey& inReceiver, const uint16_t inFundingAmount)
-{
-    //cout << "Make Setup Tx" << endl;
-// fund 2:2 UTXO from previous 1:1 UTXO
-    ImpliedTransaction tx(inInput);
-    tx.mInputTxHash = inInput.GetHash();
-    tx.mType = eSetup;
-    SetPublicKey(tx.mInputOwner1, inSender);
-    ClearVector(tx.mInputOwner2);
-    SetPublicKey(tx.mOutputOwner1, inSender);
-    SetPublicKey(tx.mOutputOwner2, inReceiver);
-    tx.mOutputAmount1 = inFundingAmount;
-    tx.mOutputAmount2 = 0;
-    tx.mTimeDelay = 0;
-    tx.mChannelState = 0;
-    ClearVector(tx.mMessageSigner);
-    ClearVector(tx.mMessageHash);
-    SetPublicKey(tx.mTransactionSigner, inSender);
-    return tx;
-}
-*/
 
 ImpliedTransaction ImpliedTransaction::MultisigSetup(const ImpliedTransaction& inInput, const secp256k1_33& inSender, const secp256k1_33& inReceiver, const uint16_t inFundingAmount)
 {
@@ -164,28 +98,7 @@ ImpliedTransaction ImpliedTransaction::MultisigSetup(const ImpliedTransaction& i
     SetMultisigPublicKey(tx.mTransactionSigner, inSender);
     return tx;
 }
-/*
-ImpliedTransaction ImpliedTransaction::Refund(const ImpliedTransaction& inInput, const bls::PublicKey& inSender, const bls::PublicKey& inReceiver, const bls::PublicKey& inSigner, const uint16_t inRefundAmount)
-{
-    //cout << "Make Refund Tx" << endl;
-    // refund to 1:1 UTXO from previous 2:2 UTXO after delay
-    ImpliedTransaction tx;
-    tx.mInputTxHash = inInput.GetHash();
-    tx.mType = eRefund;
-    SetPublicKey(tx.mInputOwner1, inSender);
-    SetPublicKey(tx.mInputOwner2, inReceiver);
-    SetPublicKey(tx.mOutputOwner1, inSender);
-    ClearVector(tx.mOutputOwner2);
-    tx.mOutputAmount1 = inRefundAmount;
-    tx.mOutputAmount2 = 0;
-    tx.mTimeDelay = 7;
-    tx.mChannelState = 0;
-    ClearVector(tx.mMessageSigner);
-    ClearVector(tx.mMessageHash);
-    SetPublicKey(tx.mTransactionSigner, inSigner);
-    return tx;
-}
-*/
+
 ImpliedTransaction ImpliedTransaction::MultisigRefund(const ImpliedTransaction& inInput, const secp256k1_33& inSender, const secp256k1_33& inReceiver, const secp256k1_33& inSigner, const uint16_t inRefundAmount)
 {
     //cout << "Make Refund Tx" << endl;
@@ -201,29 +114,7 @@ ImpliedTransaction ImpliedTransaction::MultisigRefund(const ImpliedTransaction& 
     SetMultisigPublicKey(tx.mTransactionSigner, inSigner);
     return tx;
 }
-/*
-ImpliedTransaction ImpliedTransaction::UpdateAndSettle(const ImpliedTransaction& inInput, const bls::PublicKey& inSender, const bls::PublicKey& inReceiver, const bls::PublicKey& inSigner, 
-    const uint16_t inSenderAmount, const uint16_t inReceiverAmount, const bls::PublicKey& inDestination, const std::vector<uint8_t>& inMessageHash)
-{
-    //cout << "Make UpdateAndSettle Tx" << endl;
-    // update to new 2:2 UTXO or settle to two 1:1 UTXOs after delay from previous 2:2 UTXO
-    ImpliedTransaction tx;
-    tx.mInputTxHash = inInput.GetHash();
-    tx.mType = eUpdateAndSettle;
-    SetPublicKey(tx.mInputOwner1, inSender);
-    SetPublicKey(tx.mInputOwner2, inReceiver);
-    SetPublicKey(tx.mOutputOwner1, inSender);
-    SetPublicKey(tx.mOutputOwner2, inReceiver);
-    tx.mOutputAmount1 = inSenderAmount;
-    tx.mOutputAmount2 = inReceiverAmount;
-    tx.mTimeDelay = 7;
-    tx.mChannelState = inInput.mChannelState + 1;
-    SetPublicKey(tx.mMessageSigner, inDestination);
-    ClearVector(tx.mMessageHash);
-    SetPublicKey(tx.mTransactionSigner, inSigner);
-    return tx;
-}
-*/
+
 ImpliedTransaction ImpliedTransaction::MultisigUpdateAndSettle(const ImpliedTransaction& inInput, const secp256k1_33& inSender, const secp256k1_33& inReceiver, const secp256k1_33& inSigner, 
     const uint16_t inSenderAmount, const uint16_t inReceiverAmount, const secp256k1_33& inDestination, const std::vector<uint8_t>& inMessageHash)
 {
@@ -244,29 +135,7 @@ ImpliedTransaction ImpliedTransaction::MultisigUpdateAndSettle(const ImpliedTran
     SetMultisigPublicKey(tx.mTransactionSigner, inSigner);
     return tx;
 }
-/*
-ImpliedTransaction ImpliedTransaction::Close(const ImpliedTransaction& inInput, const bls::PublicKey& inSender, const bls::PublicKey& inReceiver, const bls::PublicKey& inSigner, 
-    const uint16_t inSenderAmount, const uint16_t inReceiverAmount)
-{
-    //cout << "Make Close Tx" << endl;
-    // refund Refund 2:2 UTXO
-    ImpliedTransaction tx;
-    tx.mInputTxHash = inInput.GetHash();
-    tx.mType = eClose;
-    SetPublicKey(tx.mInputOwner1, inSender);
-    SetPublicKey(tx.mInputOwner2, inReceiver);
-    SetPublicKey(tx.mOutputOwner1, inSender);
-    SetPublicKey(tx.mOutputOwner2, inReceiver);
-    tx.mOutputAmount1 = inSenderAmount;
-    tx.mOutputAmount2 = inReceiverAmount;
-    tx.mTimeDelay = 0;
-    tx.mChannelState = inInput.mChannelState + 1;
-    ClearVector(tx.mMessageSigner);
-    ClearVector(tx.mMessageHash);
-    SetPublicKey(tx.mTransactionSigner, inSigner);
-    return tx;
-}
-*/
+
 ImpliedTransaction ImpliedTransaction::MultisigClose(const ImpliedTransaction& inInput, const secp256k1_33& inSender, const secp256k1_33& inReceiver, const secp256k1_33& inSigner, 
     const uint16_t inSenderAmount, const uint16_t inReceiverAmount)
 {
@@ -290,12 +159,6 @@ ImpliedTransaction::ImpliedTransaction()
 {
     mInputTxHash.fill(0);
     mType = eSetup;
-    /*
-    mInputOwner1.resize(bls::PublicKey::PUBLIC_KEY_SIZE, 0);
-    mInputOwner2.resize(bls::PublicKey::PUBLIC_KEY_SIZE, 0);
-    mOutputOwner1.resize(bls::PublicKey::PUBLIC_KEY_SIZE, 0);
-    mOutputOwner2.resize(bls::PublicKey::PUBLIC_KEY_SIZE, 0);
-    */
     mInputOwner1.fill(0);
     mInputOwner2.fill(0);
     mOutputOwner1.fill(0);
@@ -304,11 +167,6 @@ ImpliedTransaction::ImpliedTransaction()
     mOutputAmount2 = 0;
     mTimeDelay = 0;
     mChannelState = 0;
-    /*
-    mMessageSigner.resize(bls::PublicKey::PUBLIC_KEY_SIZE, 0);
-    mMessageHash.resize(hashsize, 0);
-    mTransactionSigner.resize(bls::PublicKey::PUBLIC_KEY_SIZE, 0);
-    */
     mMessageSigner.fill(0);
     mMessageHash.fill(0);
     // not part of serialization or transaction hash
@@ -360,7 +218,6 @@ secp256k1_32 ImpliedTransaction::GetInputHash() const
 std::vector<uint8_t> ImpliedTransaction::Serialize() const
 {
     // mType is a byte + 4 pubkeys + 2 amounts (2 bytes) + 2 byte-sized fields + pubkey + hash
-    //std::vector<uint8_t> msg(bls::PublicKey::PUBLIC_KEY_SIZE*5 + hashsize + 7);
     std::vector<uint8_t> msg(pubkeysize*5 + hashsize + 7);
     auto msg_ptr = msg.begin();
     //msg_ptr = std::copy(mInputTxHash.begin(), mInputTxHash.end(), msg_ptr);
@@ -381,12 +238,6 @@ std::vector<uint8_t> ImpliedTransaction::Serialize() const
 }
 
 // public key of the transaction signer
-/*
-const bls::PublicKey ImpliedTransaction::GetSigner() const
-{
-    return bls::PublicKey::FromBytes(mTransactionSigner.data());
-}
-*/
 const secp256k1_33 ImpliedTransaction::GetMultisigSigner() const
 {
     return mTransactionSigner;
@@ -442,16 +293,6 @@ bool ImpliedTransaction::IsMultisig() const
 }
 
 // get public key of output owner 0 or 1
-/*
-bls::PublicKey ImpliedTransaction::GetOutputOwner(const int index) const
-{
-    assert(index == 0 || index == 1);
-    if (index == 0) {
-        return bls::PublicKey::FromBytes(mOutputOwner1.data());
-    }
-    return bls::PublicKey::FromBytes(mOutputOwner2.data());
-}
-*/
 secp256k1_33 ImpliedTransaction::GetMultisigOutputOwner(const int index) const
 {
     assert(index == 0 || index == 1);
@@ -479,16 +320,6 @@ uint16_t ImpliedTransaction::GetOutputAmount(const int index) const
 }
 
 // get public key of input owner 0 or 1
-/*
-bls::PublicKey ImpliedTransaction::GetInputOwner(const int index) const
-{
-    assert(index == 0 || index == 1);
-    if (index == 0) {
-        return bls::PublicKey::FromBytes(mInputOwner1.data());
-    }
-    return bls::PublicKey::FromBytes(mInputOwner2.data());    
-}
-*/
 secp256k1_33 ImpliedTransaction::GetMultisigInputOwner(const int index) const
 {
     assert(index == 0 || index == 1);

@@ -6,6 +6,8 @@
 #include <cassert>
 #include <iterator>
 #include <fstream>
+#include <iostream>
+#include <iomanip>
 
 using namespace std;
 using namespace lot49;
@@ -132,19 +134,7 @@ MeshNode &MeshNode::FromHGID(const HGID &inHGID)
     }
     throw std::invalid_argument("invalid HGID");
 }
-/*
-// Lookup a node from a public key
-MeshNode &MeshNode::FromPublicKey(const bls::PublicKey& inPk)
-{
-    for (auto node = sNodes.begin(); node != sNodes.end(); ++node)
-    {
-        if (node->GetPublicKey() == inPk) {
-            return *node;
-        }
-    }
-    throw std::invalid_argument("invalid Public Key");
-}
-*/
+
 MeshNode &MeshNode::FromMultisigPublicKey(const secp256k1_33& inPk)
 {
     for (auto node = sNodes.begin(); node != sNodes.end(); ++node)
@@ -374,28 +364,12 @@ HGID MeshNode::GetHGID() const
 {
     return hgid;
 }
-/*
-// access private key
-const bls::PrivateKey MeshNode::GetPrivateKey() const
-{
-    bls::PrivateKey sk = bls::PrivateKey::FromSeed(mSeed.data(), mSeed.size());
-    return sk;    
-}
-
-// access public key
-const bls::PublicKey MeshNode::GetPublicKey() const
-{
-    bls::PrivateKey sk = bls::PrivateKey::FromSeed(mSeed.data(), mSeed.size());
-    return sk.GetPublicKey();
-}
-*/
-// access serialized public key; generate & store keypair if we haven't already
-// initialize global context but then use local ones via cloning (destroy after)?
+// access serialized public key
 const secp256k1_33 MeshNode::GetMultisigPublicKey() const
 {
     return btc_pk;
 }
-
+// generate & store keypair; initialize global context but then use local ones via cloning (destroy after)?
 void MeshNode::NewMultisigPublicKey(bool userandom)
 {
     // secp contexts are paired with a key
@@ -1305,30 +1279,6 @@ void MeshNode::UpdateIncentiveHeader(MeshMessage& ioMessage)
     std::copy(new_sigs[0].begin(), new_sigs[0].end(), incentive.mSignature.begin());
     std::copy(new_sigs[1].begin(), new_sigs[1].end(), incentive.mSecondSignature.begin());
 }
-/*
-//
-bls::Signature MeshNode::SignTransaction(const ImpliedTransaction& inTransaction) const
-{
-    _log << "\tNode " << GetHGID() << ", ";
-    _log << "\tSignTransaction, Tx Type: " << inTransaction.GetType() << " tx data: [";
-    for (int v: inTransaction.Serialize()) { _log << std::setfill('0') << setw(2) << std::hex << v; } 
-    _log << "]" << endl;
-    _log << " tx hash: [";
-    for (int v: inTransaction.GetHash()) { _log << std::setfill('0') << setw(2) << std::hex << v; } 
-    _log << "]" << endl;
-    _log << "\t\tTx Signer PK: ";
-    _log << inTransaction.GetSigner();
-    _log << endl;
- 
-    // TODO: use inTransaction.GetHash() or inTransaction.Serialize(); ?
-    std::vector<uint8_t> msg = inTransaction.Serialize();
-    bls::PrivateKey sk = bls::PrivateKey::FromSeed(mSeed.data(), mSeed.size());
-    bls::Signature sig = sk.Sign(msg.data(), msg.size());
-
-    //_log << "\tSignature: " << sig << endl;
-    return sig;
-}
-*/
 // use as wrapper for SignMultisig; log, calc. hash, and pass on
 secp256k1_64 MeshNode::SignMultisigTransaction(const ImpliedTransaction& inTransaction)
 {
@@ -1348,34 +1298,7 @@ secp256k1_64 MeshNode::SignMultisigTransaction(const ImpliedTransaction& inTrans
 
     return SignMultisig(msg32);
 }
-/*
-bls::Signature MeshNode::SignMessage(const std::vector<uint8_t>& inPayload) const
-{
-    //std::string theTextPayload(reinterpret_cast<const char*>(inPayload.data()), inPayload.size());
-    _log << "\tNode " << GetHGID() << ", SignMessage: size = " << std::dec << inPayload.size() << " [";
-    for (int v: inPayload) { 
-        if ( std::isprint(v)) {
-            _log << (char) v;
-        }
-        else {
-            _log << std::hex << v;
-        }
-    }
-    _log << "]" << endl;
 
-    vector<uint8_t> thePayloadHash(hashsize, 0);
-    GetSHA256(&thePayloadHash[0], inPayload.data(), inPayload.size());
-
-    _log << "\tSigner: " << GetHGID() << " Type: sign_payload hash: [";
-    for (int v: thePayloadHash) { _log << std::hex << v; }
-    _log << "] ";
-    _log << endl;    
- 
-    bls::PrivateKey sk = bls::PrivateKey::FromSeed(mSeed.data(), mSeed.size());
-    bls::Signature sig = sk.SignPrehashed(thePayloadHash.data());
-    return sig;
-}
-*/
 secp256k1_64 MeshNode::SignMultisigMessage(const std::vector<uint8_t>& inPayload)
 {
     _log << "\tNode " << GetHGID() << ", SignMessage: size = " << std::dec << inPayload.size() << " [";
