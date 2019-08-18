@@ -132,7 +132,7 @@ MeshNode &MeshNode::FromHGID(const HGID &inHGID)
     }
     throw std::invalid_argument("invalid HGID");
 }
-
+/*
 // Lookup a node from a public key
 MeshNode &MeshNode::FromPublicKey(const bls::PublicKey& inPk)
 {
@@ -144,7 +144,7 @@ MeshNode &MeshNode::FromPublicKey(const bls::PublicKey& inPk)
     }
     throw std::invalid_argument("invalid Public Key");
 }
-
+*/
 MeshNode &MeshNode::FromMultisigPublicKey(const secp256k1_33& inPk)
 {
     for (auto node = sNodes.begin(); node != sNodes.end(); ++node)
@@ -374,7 +374,7 @@ HGID MeshNode::GetHGID() const
 {
     return hgid;
 }
-
+/*
 // access private key
 const bls::PrivateKey MeshNode::GetPrivateKey() const
 {
@@ -388,7 +388,7 @@ const bls::PublicKey MeshNode::GetPublicKey() const
     bls::PrivateKey sk = bls::PrivateKey::FromSeed(mSeed.data(), mSeed.size());
     return sk.GetPublicKey();
 }
-
+*/
 // access serialized public key; generate & store keypair if we haven't already
 // initialize global context but then use local ones via cloning (destroy after)?
 const secp256k1_33 MeshNode::GetMultisigPublicKey() const
@@ -402,8 +402,6 @@ void MeshNode::NewMultisigPublicKey(bool userandom)
     context_multisig = secp256k1_context_clone(context_multisig_clean);
     secp256k1_32 seckey;
     secp256k1_pubkey pubkey;
-    // using this keypair for node identification
-    NewHGID();
     if (userandom) {
         ReadCSPRNG(csprng_source, reinterpret_cast<char*>(seckey.data()), seckeysize);
     } else {
@@ -420,6 +418,8 @@ void MeshNode::NewMultisigPublicKey(bool userandom)
     if (serial_pubkeysize != pubkeysize) {
         throw std::invalid_argument("Error serializing pubkey");
     }
+    // using this keypair for node identification
+    NewHGID();
 }
 
 // access seed used for multisig key
@@ -491,10 +491,9 @@ void MeshNode::ProposeChannel(HGID inNeighbor)
     theMessage.mIncentive.mPrepaidTokens = 0;
 
     std::vector<ImpliedTransaction> theImpliedTransactions = GetTransactions(theMessage);
-    bls::Signature refund_sig = SignTransaction(theImpliedTransactions.front());   
+    secp256k1_64 refund_sig = SignMultisigTransaction(theImpliedTransactions.front());
 
-    theMessage.mIncentive.mSignature.resize(bls::Signature::SIGNATURE_SIZE);
-    refund_sig.Serialize(&theMessage.mIncentive.mSignature[0]);
+    std::copy(refund_sig.begin(), refund_sig.end(), theMessage.mIncentive.mSignature.begin());
 
     WriteStats("Propose_Channel", theMessage);
     SendTransmission(theMessage);
@@ -527,7 +526,6 @@ const PeerChannel& MeshNode::GetChannel(HGID inProposer, HGID inFunder) const
 
 void SavePayloadHash(PeerChannel& ioChannel, const std::vector<uint8_t>& inData)
 {
-    ioChannel.mPayloadHash.resize(hashsize, 0);
     GetSHA256(&(ioChannel.mPayloadHash[0]), inData.data(), inData.size());
     _log << "\tSave payload hash(" << std::hex << ioChannel.mProposingPeer << ", " << ioChannel.mFundingPeer << "): [";
     for (int v: ioChannel.mPayloadHash) { _log << std::hex << v; }
@@ -537,7 +535,6 @@ void SavePayloadHash(PeerChannel& ioChannel, const std::vector<uint8_t>& inData)
 
 void SaveWitnessHash(PeerChannel& ioChannel, const std::vector<uint8_t>& inData)
 {
-    ioChannel.mWitnessHash.resize(hashsize, 0);
     GetSHA256(&(ioChannel.mWitnessHash[0]), inData.data(), inData.size());
     _log << "\tSave witness hash(" << std::hex << ioChannel.mProposingPeer << ", " << ioChannel.mFundingPeer << "): [";
     for (int v: ioChannel.mWitnessHash) { _log << std::hex << v; }
@@ -819,6 +816,8 @@ void MeshNode::RelayDeliveryReceipt(const MeshMessage& inMessage)
 
         // determine next hop from the relay path, no searching
         // theMessage.mReceiver = GetNextHop(GetHGID(), inMessage.mSource);
+        //int outHops{};
+        //theMessage.mReceiver = GetNextHop(GetHGID(), inMessage.mSource, outHops);
         auto pos_iter = std::find(inMessage.mIncentive.mRelayPath.begin(), inMessage.mIncentive.mRelayPath.end(), GetHGID());
         ptrdiff_t pos = std::distance(inMessage.mIncentive.mRelayPath.begin(), pos_iter);
         HGID theNextHop = (pos > 0 ? theMessage.mIncentive.mRelayPath[pos-1] : inMessage.mSource);
@@ -844,6 +843,8 @@ void MeshNode::RelayDeliveryReceipt(const MeshMessage& inMessage)
 
         // credit payment from upstream node and update nonce
         assert (GetHGID() != theMessage.mSource);
+        //uint8_t received_tokens = prepaid_tokens - outHops;
+        //PeerChannel& upstream_channel = GetChannel(GetHGID(), theMessage.mReceiver);
         uint8_t received_tokens = prepaid_tokens - pos;
         PeerChannel& upstream_channel = GetChannel(GetHGID(), theNextHop);
         upstream_channel.mUnspentTokens -= received_tokens;
@@ -962,7 +963,7 @@ void MeshNode::ConfirmSetupTransaction(const MeshMessage& inMessage, const HGID 
     SendTransmission(theMessage);
 }
 
-
+/*
 bls::Signature MeshNode::GetAggregateSignature(const MeshMessage& inMessage, const bool isSigning) const
 {
     const MeshNode& theSigningNode = MeshNode::FromHGID(inMessage.mSender);
@@ -1079,7 +1080,92 @@ bls::Signature MeshNode::GetAggregateSignature(const MeshMessage& inMessage, con
 
     return agg_sig;
 }
+*/
+std::array<secp256k1_64, 2> MeshNode::UpdateMultisigSignatures(const MeshMessage& inMessage, const bool isSigning)
+{
+    const MeshNode& theSigningNode = MeshNode::FromHGID(inMessage.mSender);
 
+    _log << "\t\tNode " << GetHGID() << ", ";
+    _log << "\t\tUpdateMultisigSignatures, " << inMessage << endl;
+
+    std::vector<ImpliedTransaction> theImpliedTransactions = GetTransactions(inMessage);
+
+    // find sender's pk, scan for tx's involving us, decide if we're 1st or 2nd signer, and sign
+    // must store signatures relevant to us when relaying, and attach theirs to the receipt
+    secp256k1_33 sender_pk = MeshNode::FromHGID(inMessage.mSender).GetMultisigPublicKey();
+    bool isOtherSigner = !isSigning;
+    bool isSkip = inMessage.mIncentive.mType < eReceipt1;
+    bool isSenderSigned = false;
+    ImpliedTransaction previous_tx;
+    std::array<secp256k1_64, 2> sigs; // for sigs we are attaching to tx's
+    for (auto tx = theImpliedTransactions.rbegin(); tx != theImpliedTransactions.rend(); tx++) {
+        secp256k1_33 tx_signer_pk = tx->GetMultisigSigner();
+
+        // filter to only relevant transactions
+        isSkip &= (tx_signer_pk != sender_pk && !isSenderSigned);
+
+        // everything not a receipt or close (strip & save signatures)
+        if (!isSkip) {
+            // check if we are the 1st or 2nd signer
+            isOtherSigner |= (tx_signer_pk != theSigningNode.GetMultisigPublicKey() || tx->GetType() == eRefund);
+
+            if (isOtherSigner) {
+                // save existing sigs on tx (to update channel)
+                _log << "\t\t\t---------- " << endl;
+                multisigstore[tx_signer_pk].push_front(inMessage.mIncentive.mSignature);
+                multisigstore[tx_signer_pk].push_front(inMessage.mIncentive.mSecondSignature);
+                previous_tx = *tx;
+            }
+            else {
+                // add our sigs to the tx (refund and settlement, still need to modify tx)
+                sigs[0] = SignMultisigTransaction(*tx);
+                sigs[1] = SignMultisigTransaction(*tx);
+            }
+        }
+
+        // after sender has signed their transactions, skip any later transactions signed by other nodes
+        isSenderSigned |= (tx_signer_pk == theSigningNode.GetMultisigPublicKey());
+
+        _log << "\t\tSigner: " << MeshNode::FromMultisigPublicKey(tx_signer_pk).GetHGID() << " Type: " << tx->GetType() << (isSkip ? "- " : (isOtherSigner ? "* " : " "));
+        _log << "\t\t tx: [";
+        for (int v: tx->GetHash()) { _log << std::setfill('0') << setw(2) << std::hex << v; }
+        _log << "\t\t] ";
+        _log << endl;
+    }
+
+    // add aggregation info for destination's signature for payload message
+    if (inMessage.mIncentive.mType >= eReceipt2 || (inMessage.mIncentive.mType == eReceipt1 && !isSigning)) {
+        const MeshNode& destination = MeshNode::FromHGID(inMessage.mDestination);
+        secp256k1_33 pk = destination.GetMultisigPublicKey();
+
+        HGID direction_hgid = inMessage.mDestination;
+        if (GetHGID() == direction_hgid) {
+            // sending receipt back to source
+            direction_hgid = inMessage.mSource;
+        }
+        int hops;
+        HGID next_hop_hgid = GetNextHop(GetHGID(), direction_hgid, hops);
+
+        const PeerChannel& theChannel = GetChannel( next_hop_hgid, GetHGID());
+
+        secp256k1_32 hash = theChannel.mPayloadHash;
+        if (inMessage.mIncentive.mWitness) {
+            hash = theChannel.mWitnessHash;
+        }
+
+        _log << endl << "\t\tSigner: " << inMessage.mDestination << " Type: sign_payload* ("<< std::hex << theChannel.mProposingPeer << ", " << theChannel.mFundingPeer << ") ";
+        _log << "hash: [";
+        for (int v: hash) { _log << std::hex << v; }
+        _log << "] ";
+        _log << endl;
+    }
+
+    _log << endl;
+
+    return sigs;
+}
+
+// secp256k1 tag
 // compute implied transaction from message and peer channel
 std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inMessage)
 {
@@ -1092,6 +1178,10 @@ std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inM
     const MeshNode& sender = MeshNode::FromHGID(inMessage.mSender);
 
     HGID first_relay_hgid = inMessage.mDestination;
+    //int outHops{};
+    //if (incentive.mRelayHops != 0) {    // path too long for first relay to be direct sender or receiver
+    //    first_relay_hgid = GetNextHop(inMessage.mSource, inMessage.mSender, outHops);
+    //}
     if (!incentive.mRelayPath.empty()) {
         first_relay_hgid = incentive.mRelayPath.front();
     }
@@ -1106,14 +1196,14 @@ std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inM
     GetSHA256(&message_hash[0], inMessage.mPayloadData.data(), inMessage.mPayloadData.size());
 
     // TODO: find a unique unspent output for this channel instead of using a default UTXO based on senders public key
-    ImpliedTransaction issued_value_tx = ImpliedTransaction::Issue(source.GetPublicKey(), COMMITTED_TOKENS);
-    ImpliedTransaction setup_tx = ImpliedTransaction::Setup(issued_value_tx, source.GetPublicKey(), first_relay.GetPublicKey(), COMMITTED_TOKENS);
+    ImpliedTransaction issued_value_tx = ImpliedTransaction::MultisigIssue(source.GetMultisigPublicKey(), COMMITTED_TOKENS);
+    ImpliedTransaction setup_tx = ImpliedTransaction::MultisigSetup(issued_value_tx, source.GetMultisigPublicKey(), first_relay.GetMultisigPublicKey(), COMMITTED_TOKENS);
 
     _log << "\t\t\tGetTransactions, Type: " << incentive.mType << endl;
 
     if (incentive.mType >= eSetup1) {
         // create refund tx, first relay signs and source signs only if first negotiate fails
-        theTransactions.push_back( ImpliedTransaction::Refund(setup_tx, source.GetPublicKey(), first_relay.GetPublicKey(), first_relay.GetPublicKey(), COMMITTED_TOKENS) );
+        theTransactions.push_back( ImpliedTransaction::MultisigRefund(setup_tx, source.GetMultisigPublicKey(), first_relay.GetMultisigPublicKey(), first_relay.GetMultisigPublicKey(), COMMITTED_TOKENS) );
     }
     if (incentive.mType >= eSetup2) {
         // TODO: sender only adds second signature for refund if first negotiate transaction fails
@@ -1125,8 +1215,10 @@ std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inM
     if (incentive.mType >= eNegotiate1) {       
         // append current node to path
         vector<HGID> path = incentive.mRelayPath;
+        //uint8_t impliedHops{};
 
         if (incentive.mType < eNegotiate2 ) {
+            //impliedHops++;
             path.push_back(inMessage.mReceiver);
         }
 
@@ -1140,14 +1232,16 @@ std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inM
             const PeerChannel &theChannel = sender.GetChannel(sender.GetHGID(), receiver.GetHGID());
             
             // create update and settle tx, sender signs and then receiver signs
-            theTransactions.push_back( ImpliedTransaction::UpdateAndSettle(last_update_tx, sender.GetPublicKey(), receiver.GetPublicKey(), sender.GetPublicKey(), 
-                theChannel.mUnspentTokens - prepaid_tokens, theChannel.mSpentTokens + prepaid_tokens, destination.GetPublicKey(), message_hash));
+            theTransactions.push_back( ImpliedTransaction::MultisigUpdateAndSettle(last_update_tx, sender.GetMultisigPublicKey(), receiver.GetMultisigPublicKey(), sender.GetMultisigPublicKey(),
+                theChannel.mUnspentTokens - prepaid_tokens, theChannel.mSpentTokens + prepaid_tokens, destination.GetMultisigPublicKey(), message_hash));
 
             // TODO: receiver should only adds the second signature to the state update if they want to checkpoint the update on the blockchain 
-            theTransactions.push_back( ImpliedTransaction::UpdateAndSettle(last_update_tx, sender.GetPublicKey(), receiver.GetPublicKey(), receiver.GetPublicKey(), 
-                theChannel.mUnspentTokens - prepaid_tokens, theChannel.mSpentTokens + prepaid_tokens, destination.GetPublicKey(), message_hash));
+            theTransactions.push_back( ImpliedTransaction::MultisigUpdateAndSettle(last_update_tx, sender.GetMultisigPublicKey(), receiver.GetMultisigPublicKey(), receiver.GetMultisigPublicKey(),
+                theChannel.mUnspentTokens - prepaid_tokens, theChannel.mSpentTokens + prepaid_tokens, destination.GetMultisigPublicKey(), message_hash));
             
-            _log << endl << "\t\t\t public key: " << sender.GetPublicKey() << ", tokens: " << (int) prepaid_tokens << ", sender:" << sender.GetHGID() << ", receiver:" << receiver.GetHGID() << " tx: [";
+            _log << endl << "\t\t\t public key: ";
+            for (int byte: sender.GetMultisigPublicKey()) { _log << std::setfill('0') << std::setw(2) << std::hex << byte; };
+            _log << ", tokens: " << (int) prepaid_tokens << ", sender:" << sender.GetHGID() << ", receiver:" << receiver.GetHGID() << " tx: [";
             for (int v: theTransactions.back().GetHash()) { _log << std::setfill('0') << setw(2) << std::hex << v; }
             _log << "] " << endl;
 
@@ -1167,10 +1261,10 @@ std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inM
         const PeerChannel &theChannel = sender.GetChannel(receiver.GetHGID(), sender.GetHGID());
 
         // create update and settle tx for delivery to destination node, sender signs and then destination signs
-        theTransactions.push_back( ImpliedTransaction::UpdateAndSettle(theTransactions.back(), sender.GetPublicKey(), receiver.GetPublicKey(), sender.GetPublicKey(), 
-            theChannel.mUnspentTokens - prepaid_tokens, theChannel.mSpentTokens + prepaid_tokens, destination.GetPublicKey(), message_hash));
-        theTransactions.push_back( ImpliedTransaction::UpdateAndSettle(theTransactions.back(), sender.GetPublicKey(), receiver.GetPublicKey(), destination.GetPublicKey(), 
-            theChannel.mUnspentTokens - prepaid_tokens, theChannel.mSpentTokens + prepaid_tokens, destination.GetPublicKey(), message_hash));
+        theTransactions.push_back( ImpliedTransaction::MultisigUpdateAndSettle(theTransactions.back(), sender.GetMultisigPublicKey(), receiver.GetMultisigPublicKey(), sender.GetMultisigPublicKey(),
+            theChannel.mUnspentTokens - prepaid_tokens, theChannel.mSpentTokens + prepaid_tokens, destination.GetMultisigPublicKey(), message_hash));
+        theTransactions.push_back( ImpliedTransaction::MultisigUpdateAndSettle(theTransactions.back(), sender.GetMultisigPublicKey(), receiver.GetMultisigPublicKey(), destination.GetMultisigPublicKey(),
+            theChannel.mUnspentTokens - prepaid_tokens, theChannel.mSpentTokens + prepaid_tokens, destination.GetMultisigPublicKey(), message_hash));
     }
     
     return theTransactions;
@@ -1196,19 +1290,22 @@ void MeshNode::UpdateIncentiveHeader(MeshMessage& ioMessage)
     if ((theChannel.mState == eNegotiate1 || theChannel.mState == eNegotiate2) && ioMessage.mSender != ioMessage.mSource) 
     {
         // add relay node to path
+        //incentive.mRelayHops++;
         incentive.mRelayPath.push_back(ioMessage.mSender);
     }
 
+    // relay should store the relevant signatures, and add theirs on the path back to the sender
     std::vector<ImpliedTransaction> theImpliedTransactions = GetTransactions(ioMessage);
-    bls::Signature agg_sig = GetAggregateSignature(ioMessage, true);
+    std::array<secp256k1_64, 2> new_sigs = UpdateMultisigSignatures(ioMessage, true);
     
-    if (!agg_sig.Verify()) {
+    if (!VerifyMessage(ioMessage)) {
         return;
     }     
 
-    agg_sig.Serialize(&incentive.mSignature[0]);
+    std::copy(new_sigs[0].begin(), new_sigs[0].end(), incentive.mSignature.begin());
+    std::copy(new_sigs[1].begin(), new_sigs[1].end(), incentive.mSecondSignature.begin());
 }
-
+/*
 //
 bls::Signature MeshNode::SignTransaction(const ImpliedTransaction& inTransaction) const
 {
@@ -1231,7 +1328,7 @@ bls::Signature MeshNode::SignTransaction(const ImpliedTransaction& inTransaction
     //_log << "\tSignature: " << sig << endl;
     return sig;
 }
-
+*/
 // use as wrapper for SignMultisig; log, calc. hash, and pass on
 secp256k1_64 MeshNode::SignMultisigTransaction(const ImpliedTransaction& inTransaction)
 {
@@ -1246,12 +1343,12 @@ secp256k1_64 MeshNode::SignMultisigTransaction(const ImpliedTransaction& inTrans
     for (int v: msg32) { _log << std::setfill('0') << setw(2) << std::hex << v; }
     _log << "]" << endl;
     _log << "\t\tTx Signer PK: ";
-    _log << inTransaction.GetSigner();
+    for (int v: inTransaction.GetMultisigSigner()) { _log << std::setfill('0') << setw(2) << std::hex << v; }
     _log << endl;
 
     return SignMultisig(msg32);
 }
-
+/*
 bls::Signature MeshNode::SignMessage(const std::vector<uint8_t>& inPayload) const
 {
     //std::string theTextPayload(reinterpret_cast<const char*>(inPayload.data()), inPayload.size());
@@ -1278,7 +1375,7 @@ bls::Signature MeshNode::SignMessage(const std::vector<uint8_t>& inPayload) cons
     bls::Signature sig = sk.SignPrehashed(thePayloadHash.data());
     return sig;
 }
-
+*/
 secp256k1_64 MeshNode::SignMultisigMessage(const std::vector<uint8_t>& inPayload)
 {
     _log << "\tNode " << GetHGID() << ", SignMessage: size = " << std::dec << inPayload.size() << " [";
@@ -1375,14 +1472,17 @@ void MeshNode::ReceiveTransmission(const MeshMessage &inMessage)
 }
 
 // check that aggregate signature is valid
-bool MeshNode::VerifyMessage(const MeshMessage& inMessage) const
+bool MeshNode::VerifyMessage(const MeshMessage& inMessage)
 {
     _log << "\tNode " << GetHGID() << ", ";
     _log << "\tVerifyMessage: " << inMessage << endl;
 
-    bls::Signature agg_sig = GetAggregateSignature(inMessage, false);
+    // for checking, just check correctness of L49 Headerand the sender's(?) sig
+    // Adapt GetMultisigSignature from GetAggregate and then use secp to verify the sig(s)
+    std::array<secp256k1_64, 2> new_sigs = UpdateMultisigSignatures(inMessage, false);
     // DEBUG
-    //if (!agg_sig.Verify()) {
+    // Need keys of signers here, which is not always the same as the current node
+    //if (!new_sigs[0].VerifyMultisig() || !new_sigs[1].VerifyMultisig()) {
     //    _log << "\tVerify Failed!" << endl;
     //    assert(0);
     //    return false;

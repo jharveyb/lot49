@@ -236,12 +236,7 @@ class MeshNode
     //
     bls::Signature GetAggregateSignature(const MeshMessage& inMessage, const bool isSigning) const;
 
-    // IMPLEMENT
-    secp256k1_64 GetPartialSignature(const MeshMessage& inMessage, const bool isSigning) const;
-
-    // IMPLEMENT - but also duplicate of SignMultisig*?
-    secp256k1_64 GetMultisigSignature(const MeshMessage& inMessage, const bool isSigning) const;
-
+    std::array<secp256k1_64, 2> UpdateMultisigSignatures(const MeshMessage& inMessage, const bool isSigning);
     // 
     static std::vector<ImpliedTransaction> GetTransactions(const MeshMessage& inMessage);
 
@@ -267,7 +262,7 @@ class MeshNode
     void ReceiveTransmission(const MeshMessage& inMessage);
 
     // check that aggregate signature is valid
-    bool VerifyMessage(const MeshMessage &inMessage) const;
+    bool VerifyMessage(const MeshMessage &inMessage);
 
     // Check a secp256k1 signature
     bool VerifyMultisig(const secp256k1_33 pubkey, const secp256k1_64 sig, const secp256k1_32 msg32);
