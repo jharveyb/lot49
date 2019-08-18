@@ -1,9 +1,10 @@
-#include "bls.hpp"
 #include "ImpliedTransaction.hpp"
 #include <list>
 #include <array>
 #include <memory>
 #include <fstream>
+#include <unordered_map>
+#include <deque>
 
 #pragma once
 
@@ -37,16 +38,17 @@ enum EChannelState
 
 struct PeerChannel
 {
-    HGID mFundingPeer;
-    HGID mProposingPeer;
-    uint16_t mUnspentTokens;
-    uint16_t mSpentTokens;
-    int16_t mPromisedTokens;
-    uint16_t mLastNonce; // used to create unique shared 2-of-2 address
-    EChannelState mState; // Setup1 -> Setup2 -> Negotiate1 -> Negotiate2 -> Receipt1 -> Receipt2 -> (Close1 -> Close2) or (back to Negotiate1)
-    std::vector<uint8_t> mRefundSignature; // bls::Signature::SIGNATURE_SIZE
-    std::vector<uint8_t> mPayloadHash; // bls::BLS::MESSAGE_HASH_LEN, hash of last payload - used for return receipt of payload
-    std::vector<uint8_t> mWitnessHash; // bls::BLS::MESSAGE_HASH_LEN, hash of last witess - used for return receipt of witness
+    HGID mFundingPeer{};
+    HGID mProposingPeer{};
+    uint16_t mUnspentTokens{};
+    uint16_t mSpentTokens{};
+    int16_t mPromisedTokens{};
+    uint16_t mLastNonce{}; // used to create unique shared 2-of-2 address
+    EChannelState mState = eSetup1; // Setup1 -> Setup2 -> Negotiate1 -> Negotiate2 -> Receipt1 -> Receipt2 -> (Close1 -> Close2) or (back to Negotiate1)
+    secp256k1_64 mRefundSignature{}; // two sigs for refund & settlement tx's
+    secp256k1_64 mSecondRefundSignature{};
+    secp256k1_32 mPayloadHash{};
+    secp256k1_32 mWitnessHash{};
 
     bool mConfirmed; // setup tx confirmed    
 };
@@ -57,11 +59,13 @@ struct L49Header
 {
     friend std::ostream& operator<<(std::ostream& out, const L49Header& i);
 
-    bool mWitness; // witness verification?
-    EChannelState mType;
-    uint8_t mPrepaidTokens;
-    std::vector<HGID> mRelayPath; // lot49::MAXRELAYS
-    std::vector<uint8_t> mSignature; // bls::Signature::SIGNATURE_SIZE
+    bool mWitness{}; // witness verification?
+    EChannelState mType = eSetup1;
+    uint8_t mPrepaidTokens{};
+    std::vector<HGID> mRelayPath{}; // lot49::MAXRELAYS
+    //uint8_t mRelayHops; // lot49::MAXRELAYS
+    secp256k1_64 mSignature{};
+    secp256k1_64 mSecondSignature{};
 
     // used by Witness to verify a transaction chain
     std::vector<uint8_t> Serialize() const;
@@ -78,20 +82,41 @@ struct MeshMessage
 {
     friend std::ostream& operator<<(std::ostream& out, const MeshMessage& m);
 
-    HGID mSender;
-    HGID mReceiver;
-    HGID mSource;
-    HGID mDestination;
-    L49Header mIncentive;
+    // provided by low-level GoTenna meshing protocol / Aspen Grove
+    HGID mSender{};
+    HGID mReceiver{};
+    HGID mSource{};
+    HGID mDestination{};
+    L49Header mIncentive{};
 
     // payload, max 236 bytes
-    std::vector<uint8_t> mPayloadData;
+    std::vector<uint8_t> mPayloadData{};
 
     // used by Witness to verify a transaction chain
     std::vector<uint8_t> Serialize() const;
 
     // reconstruct from serialized data
     void FromBytes(const std::vector<uint8_t>& inData);
+};
+
+// custom hashing and comparison for the unordered map of pks->sigs
+class ArrayHasher
+{
+    public:
+        size_t operator() (secp256k1_33 const& key) const
+        {
+            std::string hashstring(key.begin(), key.end());
+            return std::hash<std::string>{}(hashstring);
+        }
+};
+
+class ArrayEqual
+{
+    public:
+        bool operator() (secp256k1_33 const& key1, secp256k1_33 const& key2) const
+        {
+            return (key1 == key2);
+        }
 };
 
 // compute SHA256 of a set of bytes using libsecp implementation
@@ -297,6 +322,9 @@ class MeshNode
     secp256k1_context* context_serdes;
     secp256k1_32 btc_sk;
     secp256k1_33 btc_pk;
+
+    // store signatures for state channel updates from other nodes we have channels with
+    std::unordered_map<secp256k1_33, std::deque<secp256k1_64>, ArrayHasher, ArrayEqual> multisigstore;
 
     // key material used for MuSig
     secp256k1_context* context_musig;

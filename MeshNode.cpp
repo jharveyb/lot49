@@ -6,7 +6,6 @@
 #include <cassert>
 #include <iterator>
 #include <fstream>
-#include <deque>
 
 using namespace std;
 using namespace lot49;
@@ -341,6 +340,8 @@ MeshNode::MeshNode()
     context_multisig_clean = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
     csprng_source = "/dev/urandom";
     serial_pubkeysize = pubkeysize;
+    multisigstore.reserve(lot49::MAXRELAYS); // one entry per node we have a channel with, # of sigs should be fixed size
+    NewMultisigPublicKey(true); // also initializes the secp context we use
     
     // if no pending channel node or correspondent set, then use same hgid as node
     mPendingChannelNode = GetHGID();
@@ -363,7 +364,7 @@ MeshNode::MeshNode()
 void MeshNode::NewHGID()
 {
     secp256k1_32 hashbuf;
-    GetSHA256(btc_pk.data(), btc_pk.data(), seckeysize);
+    GetSHA256(hashbuf.data(), btc_pk.data(), seckeysize);
     hgid = (hashbuf[0] << 8) + hashbuf[1];
 }
 
@@ -1465,7 +1466,7 @@ bool MeshNode::GetIsGateway() const
 std::vector<uint8_t> L49Header::Serialize() const
 {
     uint32_t offset = 0;
-    std::vector<uint8_t> buf(4 + mRelayPath.size()*sizeof(HGID) + bls::Signature::SIGNATURE_SIZE);
+    std::vector<uint8_t> buf(4 + mRelayPath.size()*sizeof(HGID) + sigsize);
     buf[offset++] = mWitness ? 0x1 : 0x0;
     buf[offset++] = (uint8_t) mType;
     buf[offset++] = mPrepaidTokens;
@@ -1474,8 +1475,8 @@ std::vector<uint8_t> L49Header::Serialize() const
     buf[offset++] = relay_path_size;
     std::copy((uint8_t*) &mRelayPath[0], (uint8_t*) (&mRelayPath[0]) + relay_path_size*sizeof(HGID), &buf[offset]);
     offset += mRelayPath.size()*sizeof(HGID);
-    std::copy(&mSignature[0], &mSignature[0] + bls::Signature::SIGNATURE_SIZE, &buf[offset]);
-    offset += bls::Signature::SIGNATURE_SIZE;
+    std::copy(&mSignature[0], &mSignature[0] + sigsize, &buf[offset]);
+    offset += sigsize;
     assert(offset == buf.size());
 
     return buf;
@@ -1551,9 +1552,8 @@ void L49Header::FromBytes(const std::vector<uint8_t>& inData)
         std::copy(&inData[offset], &inData[offset] + relay_path_size * sizeof(HGID), reinterpret_cast<uint8_t*>(&mRelayPath[0]));
         offset += relay_path_size*sizeof(HGID);
     }
-    mSignature.resize(bls::Signature::SIGNATURE_SIZE);
-    std::copy(&inData[offset], &inData[offset] + bls::Signature::SIGNATURE_SIZE, &mSignature[0]);
-    offset += bls::Signature::SIGNATURE_SIZE;
+    std::copy(&inData[offset], &inData[offset] + sigsize, &mSignature[0]);
+    offset += sigsize;
     assert(offset == inData.size());
 }
 
