@@ -1,6 +1,5 @@
 
 #include <secp256k1.h>
-#include <secp256k1_recovery.h>
 #include <secp256k1_schnorrsig.h>
 extern "C" {
 #include <secp256k1_musig.h>
