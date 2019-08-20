@@ -109,17 +109,13 @@ The current state of the code is rough, lightly documented and still in flux. Th
 
 Dependencies:
 
-* [bls-signatures library](https://github.com/Chia-Network/bls-signatures) to create non-interactive aggregate signatures.
-
 * [libsecp256k1-zkp library](https://github.com/ElementsProject/secp256k1-zkp) to create interactive aggregate signatures.
-
-Note that secp256k1-zkp/include/secp256k1_musig.h:272:75 should be changed from 4 to 3; otherwise building lot49 will fail.
 
 To build:
 
     $ git submodule update --init --recursive
     $ cd secp256k1-zkp
-    $ git checkout "11af701"
+    $ git checkout "1a1a803"
     $ ./autogen.sh
     $ ./configure --prefix=$(pwd)/.libs --enable-experimental --enable-module-musig --enable-module-schnorrsig --enable-benchmark=no
     $ make -j $(nproc)
