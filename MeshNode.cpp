@@ -62,8 +62,8 @@ void MeshNode::WriteStats(const std::string& inLabel, const lot49::MeshMessage& 
     _stats << std::dec << (int) inMessage.mIncentive.mPrepaidTokens << ", ";
     // relay_path_size
     _stats << std::dec << inMessage.mIncentive.mRelayPath.size() << ", ";
-    // agg_signature_size
-    _stats << std::dec << inMessage.mIncentive.mSignature.size() << ", ";
+    // agg_signature_size - constant 128 for eltoo + classic multisig since always two signatures
+    _stats << std::dec << (inMessage.mIncentive.mSignature.size() + inMessage.mIncentive.mSecondSignature.size()) << ", ";
     // is_witness
     _stats << (inMessage.mIncentive.mWitness ? "witness" : (inMessage.mIncentive.mType == eSetup1 ? "setup" : "payload")) << ", ";
     // payload_data_size
@@ -792,6 +792,7 @@ void MeshNode::RelayDeliveryReceipt(const MeshMessage& inMessage)
         // theMessage.mReceiver = GetNextHop(GetHGID(), inMessage.mSource);
         //int outHops{};
         //theMessage.mReceiver = GetNextHop(GetHGID(), inMessage.mSource, outHops);
+        // also need to detect wich end of the route we're on here; maybe cache sender/receiver on forward direction
         auto pos_iter = std::find(inMessage.mIncentive.mRelayPath.begin(), inMessage.mIncentive.mRelayPath.end(), GetHGID());
         ptrdiff_t pos = std::distance(inMessage.mIncentive.mRelayPath.begin(), pos_iter);
         HGID theNextHop = (pos > 0 ? theMessage.mIncentive.mRelayPath[pos-1] : inMessage.mSource);
@@ -1055,6 +1056,7 @@ bls::Signature MeshNode::GetAggregateSignature(const MeshMessage& inMessage, con
     return agg_sig;
 }
 */
+// update signatures on a message by storing received sigs & replacing with new sigs if tx involves this node
 std::array<secp256k1_64, 2> MeshNode::UpdateMultisigSignatures(const MeshMessage& inMessage, const bool isSigning)
 {
     const MeshNode& theSigningNode = MeshNode::FromHGID(inMessage.mSender);
@@ -1065,7 +1067,7 @@ std::array<secp256k1_64, 2> MeshNode::UpdateMultisigSignatures(const MeshMessage
     std::vector<ImpliedTransaction> theImpliedTransactions = GetTransactions(inMessage);
 
     // find sender's pk, scan for tx's involving us, decide if we're 1st or 2nd signer, and sign
-    // must store signatures relevant to us when relaying, and attach theirs to the receipt
+    // must store signatures relevant to us when relaying, and replace with our own on forward path 
     secp256k1_33 sender_pk = MeshNode::FromHGID(inMessage.mSender).GetMultisigPublicKey();
     bool isOtherSigner = !isSigning;
     bool isSkip = inMessage.mIncentive.mType < eReceipt1;
@@ -1156,6 +1158,7 @@ std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inM
     //if (incentive.mRelayHops != 0) {    // path too long for first relay to be direct sender or receiver
     //    first_relay_hgid = GetNextHop(inMessage.mSource, inMessage.mSender, outHops);
     //}
+    // seems like we'd need to store the first relay in addition to sender/receiver & source/destination to remove relayPath
     if (!incentive.mRelayPath.empty()) {
         first_relay_hgid = incentive.mRelayPath.front();
     }
@@ -1226,7 +1229,7 @@ std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inM
     }
     if (incentive.mType >= eNegotiate2) {
 
-        // last incentive is from penultimate relay to destination
+        // last incentive is from penultimate relay to destination; need to detect which side of the route we're on
         HGID penultimate_node = incentive.mRelayPath.empty() ? inMessage.mSource : incentive.mRelayPath.back();
         const MeshNode& sender = MeshNode::FromHGID(penultimate_node);
         const MeshNode& receiver = MeshNode::FromHGID(inMessage.mDestination);
@@ -1257,8 +1260,8 @@ void MeshNode::UpdateIncentiveHeader(MeshMessage& ioMessage)
     // no need to update the incentive header when relaying delivery receipt
     assert(incentive.mType != eReceipt2);
 
-    if (incentive.mSignature.empty()) {
-        throw std::invalid_argument("invalid MeshMessage: L49Header is missing an aggregate signature");
+    if (incentive.mSignature.empty() || incentive.mSecondSignature.empty()) {
+        throw std::invalid_argument("invalid MeshMessage: L49Header is missing both signatures");
     }    
     
     if ((theChannel.mState == eNegotiate1 || theChannel.mState == eNegotiate2) && ioMessage.mSender != ioMessage.mSource) 
@@ -1283,8 +1286,7 @@ void MeshNode::UpdateIncentiveHeader(MeshMessage& ioMessage)
 secp256k1_64 MeshNode::SignMultisigTransaction(const ImpliedTransaction& inTransaction)
 {
     std::vector<uint8_t> msg = inTransaction.Serialize();
-    secp256k1_32 msg32;
-    std::copy(inTransaction.GetHash().begin(), inTransaction.GetHash().end(), msg32.begin());
+    secp256k1_32 msg32 = inTransaction.GetHash();
     _log << "\tNode " << GetHGID() << ", ";
     _log << "\tSignTransaction, Tx Type: " << inTransaction.GetType() << " tx data: [";
     for (int v: msg) { _log << std::setfill('0') << setw(2) << std::hex << v; }
