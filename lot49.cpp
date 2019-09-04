@@ -31,10 +31,10 @@ int main(int argc, char* argv[])
     cout << "testMuSig():  " << (testMuSig(true) ? "success!" : "failed!") << endl;
 
     // test with pre-defined paths
-    test1();
+    //test1();
 
     // test randomly moving nodes
-    //test2();
+    test2();
 
     // test libsecp integration
     cout << "test4(), libsecp:  " << (testsecp() ? "success!" : "failed!") << endl;
@@ -173,7 +173,7 @@ void test2()
     auto t = std::time(nullptr);
     auto tm = *std::localtime(&t);
     const size_t MAX_NODES = 30;
-    const size_t MAX_TIME = 480; // 8 hrs of simulation
+    const size_t MAX_TIME = 480; // 8 hours of simulation
     
      std::vector<int> sides =  {2928}; // {5477, 4472, 3873, 3464, 3162, 2928};
      for (auto side : sides) {
@@ -352,7 +352,7 @@ int sign(const secp256k1_context* ctx, std::array<std::array<uint8_t, seckeysize
     }
 
     /* Communication round 3: Exchange partial signatures */
-    if (!secp256k1_musig_partial_sig_combine(ctx, &musig_session[0], sig, partial_sig, num_signers)) {
+    if (!secp256k1_musig_partial_sig_combine(ctx, &musig_session[0], sig, partial_sig, num_signers, nullptr)) {
         return 0;
     }
 
