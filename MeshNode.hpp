@@ -64,7 +64,7 @@ struct L49Header
     EChannelState mType = eSetup1;
     uint8_t mPrepaidTokens{};
     std::vector<HGID> mRelayPath{}; // lot49::MAXRELAYS
-    //uint8_t mRelayHops; // lot49::MAXRELAYS
+    uint8_t mRelayHops{}; // lot49::MAXRELAYS
     secp256k1_64 mSignature{};
     secp256k1_64 mSecondSignature{};
 

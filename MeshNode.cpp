@@ -61,7 +61,7 @@ void MeshNode::WriteStats(const std::string& inLabel, const lot49::MeshMessage& 
     // prepaid_tokens
     _stats << std::dec << (int) inMessage.mIncentive.mPrepaidTokens << ", ";
     // relay_path_size
-    _stats << std::dec << inMessage.mIncentive.mRelayPath.size() << ", ";
+    _stats << std::dec << (int) inMessage.mIncentive.mRelayHops << ", ";
     // agg_signature_size - constant 128 for eltoo + classic multisig since always two signatures
     // no signature data on receipts
     if (inMessage.mIncentive.mType == eReceipt1 || inMessage.mIncentive.mType == eReceipt2) {
@@ -368,8 +368,6 @@ void MeshNode::NewHGID()
     hgid = (hashbuf[0] << 8) + hashbuf[1];
 }
 
-
-// secp256k1 tag
 HGID MeshNode::GetHGID() const
 {
     return hgid;
@@ -429,7 +427,6 @@ void GetSHA256(uint8_t* output, const uint8_t* data, size_t len)
     secp256k1_sha256_finalize(&hashstate, static_cast<unsigned char*>(output));
 }
 
-// secp256k1 tag
 // initiate a payment channel if one doesn't already exist with this neighbor
 void MeshNode::ProposeChannel(HGID inNeighbor)
 {
@@ -604,7 +601,7 @@ void MeshNode::RelayMessage(const MeshMessage& inMessage)
     assert(theSenderChannel.mConfirmed == true);
 
     // receive payment from sender
-    uint8_t received_tokens = (inMessage.mIncentive.mPrepaidTokens - inMessage.mIncentive.mRelayPath.size());
+    uint8_t received_tokens = (inMessage.mIncentive.mPrepaidTokens - inMessage.mIncentive.mRelayHops);
     //theSenderChannel.mUnspentTokens -= received_tokens;
     //theSenderChannel.mSpentTokens += received_tokens;
     theSenderChannel.mPromisedTokens += received_tokens;
@@ -617,7 +614,7 @@ void MeshNode::RelayMessage(const MeshMessage& inMessage)
     // TODO: check if payment enough to reach destination
 
     // pay next hop
-    uint8_t spent_tokens = (inMessage.mIncentive.mPrepaidTokens - inMessage.mIncentive.mRelayPath.size()) - 1;
+    uint8_t spent_tokens = (inMessage.mIncentive.mPrepaidTokens - inMessage.mIncentive.mRelayHops) - 1;
     PeerChannel &theChannel = GetChannel(next_hop, GetHGID());
     //theChannel.mUnspentTokens -= spent_tokens;
     //theChannel.mSpentTokens += spent_tokens;
@@ -774,7 +771,7 @@ void MeshNode::ReceiveMessage(const MeshMessage& inMessage)
     // !! update channel state(s) AFTER sending transmission because Verify() looks at current nodes channel state
 
     // receive remaining tokens from sender
-    uint8_t remaining_tokens = (inMessage.mIncentive.mPrepaidTokens - inMessage.mIncentive.mRelayPath.size());
+    uint8_t remaining_tokens = (inMessage.mIncentive.mPrepaidTokens - inMessage.mIncentive.mRelayHops);
     PeerChannel &upstream_channel = GetChannel(GetHGID(), inMessage.mSender);
     upstream_channel.mUnspentTokens -= remaining_tokens;
     upstream_channel.mSpentTokens += remaining_tokens;
@@ -1169,7 +1166,7 @@ std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inM
     //    first_relay_hgid = GetNextHop(inMessage.mSource, inMessage.mSender, outHops);
     //}
     // seems like we'd need to store the first relay in addition to sender/receiver & source/destination to remove relayPath
-    if (!incentive.mRelayPath.empty()) {
+    if (incentive.mRelayHops != 0) {    // path too long for first relay to be direct sender or receiver
         first_relay_hgid = incentive.mRelayPath.front();
     }
     if (inMessage.mSender == inMessage.mSource) {
@@ -1205,7 +1202,7 @@ std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inM
         //uint8_t impliedHops{};
 
         if (incentive.mType < eNegotiate2 ) {
-            //impliedHops++;
+            //impliedHops++; would increment relayHops but we're not modifying the message
             path.push_back(inMessage.mReceiver);
         }
 
@@ -1277,7 +1274,7 @@ void MeshNode::UpdateIncentiveHeader(MeshMessage& ioMessage)
     if ((theChannel.mState == eNegotiate1 || theChannel.mState == eNegotiate2) && ioMessage.mSender != ioMessage.mSource) 
     {
         // add relay node to path
-        //incentive.mRelayHops++;
+        incentive.mRelayHops++;
         incentive.mRelayPath.push_back(ioMessage.mSender);
     }
 
@@ -1505,7 +1502,7 @@ std::vector<uint8_t> L49Header::Serialize() const
     buf[offset++] = mWitness ? 0x1 : 0x0;
     buf[offset++] = (uint8_t) mType;
     buf[offset++] = mPrepaidTokens;
-    uint8_t relay_path_size = mRelayPath.size();
+    uint8_t relay_path_size = mRelayHops;
     assert(relay_path_size < 10);
     buf[offset++] = relay_path_size;
     std::copy((uint8_t*) &mRelayPath[0], (uint8_t*) (&mRelayPath[0]) + relay_path_size*sizeof(HGID), &buf[offset]);
