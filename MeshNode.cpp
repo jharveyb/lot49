@@ -63,11 +63,21 @@ void MeshNode::WriteStats(const std::string& inLabel, const lot49::MeshMessage& 
     // relay_path_size
     _stats << std::dec << inMessage.mIncentive.mRelayPath.size() << ", ";
     // agg_signature_size - constant 128 for eltoo + classic multisig since always two signatures
-    _stats << std::dec << (inMessage.mIncentive.mSignature.size() + inMessage.mIncentive.mSecondSignature.size()) << ", ";
+    // no signature data on receipts
+    if (inMessage.mIncentive.mType == eReceipt1 || inMessage.mIncentive.mType == eReceipt2) {
+        _stats << std::dec << 0 << ", ";
+    } else {
+        _stats << std::dec << (inMessage.mIncentive.mSignature.size() + inMessage.mIncentive.mSecondSignature.size()) << ", ";
+    }
     // is_witness
     _stats << (inMessage.mIncentive.mWitness ? "witness" : (inMessage.mIncentive.mType == eSetup1 ? "setup" : "payload")) << ", ";
     // payload_data_size
-    _stats << std::dec << inMessage.mPayloadData.size() << ", ";
+    // 16 byte preimage on return path
+    if (inMessage.mIncentive.mType == eReceipt1 || inMessage.mIncentive.mType == eReceipt2) {
+        _stats << std::dec << 16 << ", ";
+    } else {
+        _stats << std::dec << inMessage.mPayloadData.size() << ", ";
+    }
     // receiver_unspent_tokens, receiver_channel_state, receiver_channel_confirmed
     if (receiver.HasChannel(inMessage.mReceiver, inMessage.mSender)) {
         PeerChannel& channel = receiver.GetChannel(inMessage.mReceiver, inMessage.mSender);
