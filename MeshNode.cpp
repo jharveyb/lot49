@@ -1501,7 +1501,7 @@ bool MeshNode::GetIsGateway() const
 std::vector<uint8_t> L49Header::Serialize() const
 {
     uint32_t offset = 0;
-    std::vector<uint8_t> buf(4 + mRelayPath.size()*sizeof(HGID) + sigsize);
+    std::vector<uint8_t> buf(4 + mRelayPath.size()*sizeof(HGID) + 2*sigsize);
     buf[offset++] = mWitness ? 0x1 : 0x0;
     buf[offset++] = (uint8_t) mType;
     buf[offset++] = mPrepaidTokens;
@@ -1511,6 +1511,8 @@ std::vector<uint8_t> L49Header::Serialize() const
     std::copy((uint8_t*) &mRelayPath[0], (uint8_t*) (&mRelayPath[0]) + relay_path_size*sizeof(HGID), &buf[offset]);
     offset += mRelayPath.size()*sizeof(HGID);
     std::copy(&mSignature[0], &mSignature[0] + sigsize, &buf[offset]);
+    offset += sigsize;
+    std::copy(&mSecondSignature[0], &mSecondSignature[0] + sigsize, &buf[offset]);
     offset += sigsize;
     assert(offset == buf.size());
 
@@ -1588,6 +1590,8 @@ void L49Header::FromBytes(const std::vector<uint8_t>& inData)
         offset += relay_path_size*sizeof(HGID);
     }
     std::copy(&inData[offset], &inData[offset] + sigsize, &mSignature[0]);
+    offset += sigsize;
+    std::copy(&inData[offset], &inData[offset] + sigsize, &mSecondSignature[0]);
     offset += sigsize;
     assert(offset == inData.size());
 }
