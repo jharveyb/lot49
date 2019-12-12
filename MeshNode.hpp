@@ -101,7 +101,7 @@ struct MeshMessage
 };
 
 // custom hashing and comparison for the unordered map of pks->sigs
-class ArrayHasher
+class Array33Hasher
 {
     public:
         size_t operator() (secp256k1_33 const& key) const
@@ -111,7 +111,7 @@ class ArrayHasher
         }
 };
 
-class ArrayEqual
+class Array33Equal
 {
     public:
         bool operator() (secp256k1_33 const& key1, secp256k1_33 const& key2) const
@@ -308,7 +308,7 @@ class MeshNode
     secp256k1_33 btc_pk;
 
     // store signatures for state channel updates from other nodes we have channels with
-    std::unordered_map<secp256k1_33, std::deque<secp256k1_64>, ArrayHasher, ArrayEqual> multisigstore;
+    std::unordered_map<secp256k1_33, std::deque<secp256k1_64>, Array33Hasher, Array33Equal> multisigstore;
 
     // key material used for MuSig
     secp256k1_context* context_musig;
