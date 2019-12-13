@@ -776,8 +776,6 @@ void MeshNode::ReceiveMessage(const MeshMessage& inMessage)
     PeerChannel &theChannel = GetChannel(theMessage.mReceiver, GetHGID());
     theChannel.mState = theMessage.mIncentive.mType;
     UpdateIncentiveHeader(theMessage);
-    // Work around increment to relay hops from UpdateIncentiveHeader; downstream node need to calculate received tokens
-    theMessage.mIncentive.mRelayHops--;
 
     // no need to send payload, hash is cached by nodes
     theMessage.mPayloadData.clear();
