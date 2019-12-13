@@ -244,6 +244,21 @@ bool MeshNode::FindRoute(const HGID inDestination, const int inDepth, MeshRoute&
     return found;
 }
 
+void MeshNode::CacheRelay(HGID inSource, HGID inDestination, HGID inSender, HGID inReceiver) {
+    uint32_t relaykey = inSource + (inDestination << 16);
+    uint32_t relaynodes = inSender + (inReceiver << 16);
+    relaystore[relaykey] = relaynodes;
+    return;
+}
+
+void MeshNode::FetchRelay(HGID inSource, HGID inDestination, HGID &inSender, HGID &inReceiver) {
+    uint32_t relaykey = inSource + (inDestination << 16);
+    uint32_t relaynodes = relaystore[relaykey];
+    inSender = relaynodes & 0x0000FFFF;
+    inReceiver = (relaynodes >> 16);
+    return;
+}
+
 bool MeshNode::IsWithinRange(HGID inNode2)
 {
     double distance = Distance(mCurrentPos, MeshNode::FromHGID(inNode2).mCurrentPos);
@@ -635,6 +650,8 @@ void MeshNode::RelayMessage(const MeshMessage& inMessage)
     MeshMessage outMessage = inMessage;
     outMessage.mSender = GetHGID();
     outMessage.mReceiver = next_hop;
+    // RelayCache tag - add entry to cache
+    CacheRelay(outMessage.mSource, outMessage.mDestination, inMessage.mSender, outMessage.mReceiver);
 
     if (outMessage.mReceiver == outMessage.mDestination && outMessage.mIncentive.mType == eNegotiate1 ) {
         // next node is destination node
@@ -805,6 +822,15 @@ void MeshNode::RelayDeliveryReceipt(const MeshMessage& inMessage)
         HGID theNextHop = (pos > 0 ? theMessage.mIncentive.mRelayPath[pos-1] : inMessage.mSource);
         _log << "Next Hop (relay path): " << std::hex << GetHGID() << " -> " << std::hex << inMessage.mSource << " = " << std::hex << theNextHop << endl;
         theMessage.mReceiver = theNextHop;
+        HGID cachedNextHop, cachedPreviousHop;
+        FetchRelay(theMessage.mSource, theMessage.mDestination, cachedNextHop, cachedPreviousHop);
+        if (cachedPreviousHop != inMessage.mSender) {
+            cout << "Sending Delivery Receipt: Sender is not cached previous hop!" << endl;
+        }
+        if (theNextHop != cachedNextHop) {
+            cout << "Sending Delivery Receipt: Receiver is not cached next hop!" << endl;
+        }
+        theMessage.mReceiver = cachedNextHop;
 
         // use cached hash of payload, do not resend payload with receipt
         theMessage.mPayloadData.clear();

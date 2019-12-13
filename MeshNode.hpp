@@ -221,6 +221,12 @@ class MeshNode
     // recursively find shortest route to a node
     bool FindRoute(const HGID inDestination, const int inDepth, MeshRoute& ioRoute, std::list<HGID>& ioVisited, double& ioDistance);
 
+    // store relay information for a message
+    void CacheRelay(HGID inSource, HGID inDestination, HGID inSender, HGID inReceiver);
+
+    // fetch relay information for a messge when routing the delivery receipt
+    void FetchRelay(HGID inSource, HGID inDestination, HGID &inSender, HGID &inReceiver);
+
     // return true if channel exists with this neighbor
     bool HasChannel(HGID inProposer, HGID inFunder) const;
 
@@ -286,6 +292,11 @@ class MeshNode
 
     // state of the channel with a peer (receiving, next hop) node
     std::map<std::pair<HGID,HGID>, PeerChannel> mPeerChannels;
+
+    // cache of sender/receiver of messages, to replace RelayPath
+    // also store original source & destination to detect when we're relaying receipts back to the source
+    // Key - (Source || Destination) - (Sender || Receiver)
+    std::unordered_map<uint32_t, uint32_t> relaystore; 
 
     // nearby node with setup transaction pending witness node confirmation
     HGID mPendingChannelNode;
