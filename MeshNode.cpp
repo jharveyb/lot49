@@ -1726,4 +1726,4 @@ void MeshNode::UpdateSimulation()
 }
 
 
-}; // namespace lot49
+} // namespace lot49

@@ -268,7 +268,6 @@ bool ImpliedTransaction::AddSigner(const bls::PublicKey& inSigner)
 bool ImpliedTransaction::AddMultisigSigner(const secp256k1_33& inSigner) 
 {
     // record public key for second transaction signer; add public keys in order (eg. first, second)
-    const secp256k1_33 signer = GetMultisigSigner();
     secp256k1_33 input_owner0 = GetMultisigInputOwner(0);
     secp256k1_33 input_owner1 = GetMultisigInputOwner(1);
     secp256k1_33 current_signer = GetMultisigSigner();
@@ -357,4 +356,4 @@ uint32_t ImpliedTransaction::FourBytesToInt(const uint8_t* bytes) const
     return sum;
 }
 
-}; // namespace lot49
+} // namespace lot49

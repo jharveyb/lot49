@@ -30,4 +30,4 @@ std::ofstream& LOG();
 std::ofstream& STATS();
 #define _stats STATS()
 
-};  // namespace lot49
+} // namespace lot49

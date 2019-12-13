@@ -5,7 +5,11 @@ project (Lot49)
 set (Lot49_VERSION_MAJOR 0)
 set (Lot49_VERSION_MINOR 1)
 set (CMAKE_CXX_STANDARD 11)
-set (CMAKE_BUILD_TYPE "DEBUG")
+set(CMAKE_CXX_FLAGS_DEVEL "-Wall -pedantic -O2 -g -DDEBUG" CACHE STRING
+  "Flags used by C++ compiler for development builds."
+  FORCE)
+mark_as_advanced(CMAKE_CXX_FLAGS_DEVEL)
+set (CMAKE_BUILD_TYPE "DEVEL")
 
 
 include_directories(

@@ -327,4 +327,4 @@ class MeshNode
     friend std::ostream& operator<<(std::ostream& out, const MeshNode& n);
 };
 
-}; // namespace lot49
+} // namespace lot49

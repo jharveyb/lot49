@@ -170,7 +170,7 @@ std::ofstream& TOPOLOGY() {
         sTopology << "time, node, correspondent, distance, current_x, current_y, paused, next_node, in_channels, out_channels, received_tokens, spent_tokens, token_balance" << std::endl;
     }
     return sTopology;
-};
+}
 
 void CloseLogs()
 {
@@ -191,4 +191,4 @@ std::vector<uint8_t> HexToBytes(const std::string& hex) {
   return bytes;
 }
 
-}; // namespace lot49
+} // namespace lot49

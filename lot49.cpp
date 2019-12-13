@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
 
     // test libsecp integration
     cout << "test4(), libsecp:  " << (testsecp() ? "success!" : "failed!") << endl;
-};
+}
 
 // test integration of libsecp for nodes
 bool testsecp()
@@ -69,7 +69,7 @@ bool testsecp()
     cout << endl;
     MeshNode::CreateNodes(NODECOUNT);
     // test keygen and node lookup based on pubkeys
-    for (int i = 0; i < NODECOUNT; i++) {
+    for (size_t i = 0; i < NODECOUNT; i++) {
         cout << "HGID - " << MeshNode::FromIndex(i).GetHGID() << endl;
         cout << "Setting seed for multisig keypair..." << endl;
         MeshNode::FromIndex(i).SetMultisigSeed(seed);
@@ -116,7 +116,7 @@ bool testsecp()
     // test signing with message wrapper & verifying
     secp256k1_32 signinghash;
     GetSHA256(signinghash.data(), array_test_message.data(), array_test_message.size());
-    for (int i = 0; i < NODECOUNT; i++) {
+    for (size_t i = 0; i < NODECOUNT; i++) {
         sig_cache[i] = MeshNode::FromIndex(i).TestSignMultisigMessage(vec_test_message);
         if (!MeshNode::FromIndex(i).TestVerifyMultisig(pk_cache[i], sig_cache[i], signinghash)) {
             cout << "Verifying own signature failed!" << endl;
@@ -186,7 +186,7 @@ void test2()
         MeshNode::sMaxSize = side;
         MeshNode::CreateNodes(MAX_NODES);
 
-        for (int i = 0; i < MAX_TIME; i++) {
+        for (size_t i = 0; i < MAX_TIME; i++) {
             MeshNode::UpdateSimulation();
         }
         CloseLogs();
@@ -201,7 +201,7 @@ void test1()
 
     // create linear route: A <-> B <-> C <-> D1
     MeshRoute route1;
-    for (int i = 0; i < MAX_NODES-2; i++) {
+    for (size_t i = 0; i < MAX_NODES-2; i++) {
         HGID hgid = MeshNode::FromIndex(i).GetHGID();
         route1.push_back(hgid);
     }
@@ -285,7 +285,7 @@ int sign(const secp256k1_context* ctx, std::array<std::array<uint8_t, seckeysize
     std::array<uint8_t*, num_signers> nonce_commitment_ptr;
     secp256k1_musig_session_signer_data signer_data[num_signers][num_signers];
     secp256k1_pubkey nonce[num_signers];
-    int i, j;
+    size_t i, j;
     secp256k1_musig_partial_signature partial_sig[num_signers];
     secp256k1_pubkey musig_pk;
 
