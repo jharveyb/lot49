@@ -776,6 +776,8 @@ void MeshNode::ReceiveMessage(const MeshMessage& inMessage)
     PeerChannel &theChannel = GetChannel(theMessage.mReceiver, GetHGID());
     theChannel.mState = theMessage.mIncentive.mType;
     UpdateIncentiveHeader(theMessage);
+    // Work around increment to relay hops from UpdateIncentiveHeader; downstream node need to calculate received tokens
+    theMessage.mIncentive.mRelayHops--;
 
     // no need to send payload, hash is cached by nodes
     theMessage.mPayloadData.clear();
@@ -817,20 +819,15 @@ void MeshNode::RelayDeliveryReceipt(const MeshMessage& inMessage)
         //int outHops{};
         //theMessage.mReceiver = GetNextHop(GetHGID(), inMessage.mSource, outHops);
         // also need to detect wich end of the route we're on here; maybe cache sender/receiver on forward direction
-        auto pos_iter = std::find(inMessage.mIncentive.mRelayPath.begin(), inMessage.mIncentive.mRelayPath.end(), GetHGID());
-        ptrdiff_t pos = std::distance(inMessage.mIncentive.mRelayPath.begin(), pos_iter);
-        HGID theNextHop = (pos > 0 ? theMessage.mIncentive.mRelayPath[pos-1] : inMessage.mSource);
-        _log << "Next Hop (relay path): " << std::hex << GetHGID() << " -> " << std::hex << inMessage.mSource << " = " << std::hex << theNextHop << endl;
-        theMessage.mReceiver = theNextHop;
+        //auto pos_iter = std::find(inMessage.mIncentive.mRelayPath.begin(), inMessage.mIncentive.mRelayPath.end(), GetHGID());
+        //ptrdiff_t pos = std::distance(inMessage.mIncentive.mRelayPath.begin(), pos_iter);
+        //HGID theNextHop = (pos > 0 ? theMessage.mIncentive.mRelayPath[pos-1] : inMessage.mSource);
+        //theMessage.mReceiver = theNextHop;
         HGID cachedNextHop, cachedPreviousHop;
         FetchRelay(theMessage.mSource, theMessage.mDestination, cachedNextHop, cachedPreviousHop);
-        if (cachedPreviousHop != inMessage.mSender) {
-            cout << "Sending Delivery Receipt: Sender is not cached previous hop!" << endl;
-        }
-        if (theNextHop != cachedNextHop) {
-            cout << "Sending Delivery Receipt: Receiver is not cached next hop!" << endl;
-        }
+        assert(cachedPreviousHop == inMessage.mSender);
         theMessage.mReceiver = cachedNextHop;
+        _log << "Next Hop (relay path): " << std::hex << GetHGID() << " -> " << std::hex << inMessage.mSource << " = " << std::hex << cachedNextHop << endl;
 
         // use cached hash of payload, do not resend payload with receipt
         theMessage.mPayloadData.clear();
@@ -838,7 +835,11 @@ void MeshNode::RelayDeliveryReceipt(const MeshMessage& inMessage)
         // message destination signs before relaying eReceipt1, all others just relay
         assert(theMessage.mIncentive.mType == eReceipt1 || theMessage.mIncentive.mType == eReceipt2);
         theMessage.mIncentive.mType = eReceipt2;
+        // distance from source - used to calculate received tokens
+        int RelayDistance = theMessage.mIncentive.mRelayHops;
         // no need to call UpdateIncentiveHeader(theMessage) because receipts don't need any extra incentives
+        // But need to decrement RelayHops so downstream nodes know their position in the relay path
+        theMessage.mIncentive.mRelayHops--;
 
         WriteStats("Relay_Receipt", theMessage);
 
@@ -853,8 +854,8 @@ void MeshNode::RelayDeliveryReceipt(const MeshMessage& inMessage)
         assert (GetHGID() != theMessage.mSource);
         //uint8_t received_tokens = prepaid_tokens - outHops;
         //PeerChannel& upstream_channel = GetChannel(GetHGID(), theMessage.mReceiver);
-        uint8_t received_tokens = prepaid_tokens - pos;
-        PeerChannel& upstream_channel = GetChannel(GetHGID(), theNextHop);
+        uint8_t received_tokens = prepaid_tokens - RelayDistance;
+        PeerChannel& upstream_channel = GetChannel(GetHGID(), cachedNextHop);
         upstream_channel.mUnspentTokens -= received_tokens;
         upstream_channel.mSpentTokens += received_tokens;
         upstream_channel.mPromisedTokens -= received_tokens;
