@@ -356,7 +356,7 @@ MeshNode::MeshNode()
     csprng_source = "/dev/urandom";
     serial_pubkeysize = pubkeysize;
     multisigstore.reserve(lot49::MAXRELAYS); // one entry per node we have a channel with, # of sigs should be fixed size
-    NewMultisigPublicKey(true); // also initializes the secp context we use
+    NewMultisigPublicKey(false); // also initializes the secp context we use
     
     // if no pending channel node or correspondent set, then use same hgid as node
     mPendingChannelNode = GetHGID();
