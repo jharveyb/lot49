@@ -1185,6 +1185,11 @@ std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inM
     const MeshNode& source = MeshNode::FromHGID(inMessage.mSource);
     const MeshNode& sender = MeshNode::FromHGID(inMessage.mSender);
 
+    HGID cachedUpstream, cachedDownstream;
+    MeshNode::FromHGID(inMessage.mSender).FetchRelay(inMessage.mSource, inMessage.mDestination, cachedUpstream, cachedDownstream); 
+    if (cachedUpstream == 0 & cachedDownstream == 0) {
+        MeshNode::FromHGID(inMessage.mSender).FetchRelay(inMessage.mDestination, inMessage.mSource, cachedUpstream, cachedDownstream); 
+    }
     HGID first_relay_hgid = inMessage.mDestination;
     //int outHops{};
     //if (incentive.mRelayHops != 0) {    // path too long for first relay to be direct sender or receiver
@@ -1263,6 +1268,40 @@ std::vector<ImpliedTransaction> MeshNode::GetTransactions(const MeshMessage& inM
 
         // last incentive is from penultimate relay to destination; need to detect which side of the route we're on
         HGID penultimate_node = incentive.mRelayPath.empty() ? inMessage.mSource : incentive.mRelayPath.back();
+        HGID cachedPenultimateNode;
+        // we are source
+        if (inMessage.mSender == inMessage.mSource) {
+            // no relay nodes, we are penultimate
+            if (inMessage.mReceiver == inMessage.mDestination) {
+                cachedPenultimateNode = inMessage.mSender;
+            } else {
+            // penultimate = first relay, our downstream
+            cachedPenultimateNode = cachedDownstream;
+            }
+        // we are destination
+        } else if (inMessage.mSender == inMessage.mDestination) {
+            // no relay nodes, we are penultimate
+            if (inMessage.mReceiver == inMessage.mSource) {
+                cachedPenultimateNode = inMessage.mReceiver;
+            } else {
+            // penultimate is our upstream
+            cachedPenultimateNode = cachedUpstream;
+            }
+        // forward path, relay next to source or destination
+        } else if ((inMessage.mReceiver == inMessage.mDestination) || (inMessage.mSender == inMessage.mSource)) {
+            cachedPenultimateNode = inMessage.mSender;
+        // inverted path, relay next to source or destination
+        } else if ((inMessage.mReceiver == inMessage.mSource) || (inMessage.mSender == inMessage.mDestination)) {
+            cachedPenultimateNode = inMessage.mSender;
+        }
+        // what about paths >3 hops?
+        //} else if (cachedDownstream == inMessage.mReceiver || cachedDownstream == inMessage.mSender) {
+        //    cachedPenultimateNode = inMessage.mSender;
+        //} else if (cachedUpstream == inMessage.mReceiver || cachedUpstream == inMessage.mSender) {
+        //    cachedPenultimateNode = inMessage.mSender;
+        //}
+        //cout << "penultimate node: " << penultimate_node << " cached result: " << cachedPenultimateNode << endl;
+        assert(penultimate_node == cachedPenultimateNode);
         const MeshNode& sender = MeshNode::FromHGID(penultimate_node);
         const MeshNode& receiver = MeshNode::FromHGID(inMessage.mDestination);
 
